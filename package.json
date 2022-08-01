@@ -1,0 +1,13 @@
+{
+  "name": "iimport",
+  "version": "0.0.0",
+  "description": "",
+  "main": "index.js",
+  "bin": "index.js",
+  "scripts": {
+    "go": "node index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
