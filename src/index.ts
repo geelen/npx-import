@@ -1,4 +1,7 @@
 import { execaCommand } from 'execa'
+import semver from 'semver'
+import path from 'path'
+import { createRequire } from 'module'
 
 const INSTRUCTIONS = {
   npm: (packageName: string) => `npm install --save-dev ${packageName}`,
@@ -6,7 +9,105 @@ const INSTRUCTIONS = {
   yarn: (packageName: string) => `yarn add -D ${packageName}`,
 }
 
-function getPackageManager(): keyof typeof INSTRUCTIONS {
+type Logger = (message: string) => void
+
+export async function importOnDemand(
+  packageName: string,
+  version: string = 'latest',
+  logger: Logger = (message: string) => console.log(`[IOD] ${message}`)
+): Promise<any> {
+  try {
+    return await import(packageName)
+  } catch (e) {
+    logger(
+      `${packageName} not available locally. Attempting to use npx to install temporarily.`
+    )
+    try {
+      return await installAndImport(packageName, version, logger)
+    } catch (e) {
+      throw new Error(
+        `IOD (Import On-Demand) failed for ${packageName} with message:\n    ${e.message}\n\n` +
+          `You should install ${packageName} locally: \n    ` +
+          installInstructions(packageName, version) +
+          `\n\n`
+      )
+    }
+  }
+}
+
+async function installAndImport(
+  packageName: string,
+  version: string,
+  logger: Logger
+) {
+  await checkNpxVersion()
+  const installDir = await installAndReturnDir(packageName, version, logger)
+  return await createRequire(installDir)(packageName)
+}
+
+async function checkNpxVersion() {
+  const versionCmd = `npx --version`
+  const { failed, stdout: npmVersion } = await execaCommand(versionCmd)
+  if (failed) {
+    throw new Error(
+      `Couldn't execute ${versionCmd}. Is npm installed and up-to-date?`
+    )
+  }
+
+  if (!semver.gte(npmVersion, '8.0.0')) {
+    throw new Error(
+      `Require npm version 8+. Got '${npmVersion}' when running '${versionCmd}'`
+    )
+  }
+}
+
+async function installAndReturnDir(
+  packageName: string,
+  version: string,
+  logger: Logger
+) {
+  const installPackage = `npx -y -p ${packageName}@${version}`
+  logger(`Executing '${installPackage}' ...`)
+  const emitPath = `node -e 'console.log(process.env.PATH)'`
+  const { failed, stdout } = await execaCommand(
+    `${installPackage} ${emitPath}`,
+    {
+      shell: true,
+    }
+  )
+  if (failed) {
+    throw new Error(
+      `Failed installing ${packageName} using: ${installPackage}.`
+    )
+  }
+  const paths = stdout.split(':')
+  const tempPath = paths.find((p) => /\/\.npm\/_npx\//.exec(p))
+
+  if (!tempPath)
+    throw new Error(
+      `Failed to find temporary install directory. Looking for paths matching '/.npm/_npx/' in:\n${JSON.stringify(
+        paths
+      )}`
+    )
+
+  // Expecting the path ends with node_modules/.bin
+  const nodeModulesPath = path.resolve(tempPath, '..')
+  if (!nodeModulesPath.endsWith('node_modules')) {
+    throw new Error(
+      `Found NPX temporary path of '${tempPath}' but expected to be able to find a node_modules directory by looking in '..'.`
+    )
+  }
+
+  logger(`Installed into ${nodeModulesPath}.`)
+
+  return nodeModulesPath
+}
+
+function installInstructions(packageName: string, version: string) {
+  return INSTRUCTIONS[getPackageManager()](packageName)
+}
+
+export function getPackageManager(): keyof typeof INSTRUCTIONS {
   const userAgent = process.env.npm_config_user_agent
   if (userAgent) {
     if (userAgent.startsWith('pnpm')) return 'pnpm'
@@ -27,35 +128,4 @@ function getPackageManager(): keyof typeof INSTRUCTIONS {
   }
 
   return 'npm'
-}
-
-function installInstructions(packageName: string) {
-  return INSTRUCTIONS[getPackageManager()](packageName)
-}
-
-export async function importOnDemand(packageName: string): Promise<any> {
-  try {
-    return await import(packageName)
-  } catch (e) {
-    try {
-      return await installAndImport()
-    } catch (e) {
-      throw new Error(
-        `IOD (Install On-Demand) failed for '${packageName}' with message: ${e.message}\n\n` +
-          `You should install '${packageName}' locally: ${installInstructions(
-            packageName
-          )}`
-      )
-    }
-  }
-}
-
-async function installAndImport() {
-  const versionCmd = `npoox --version`
-  const { failed, stdout } = await execaCommand(versionCmd)
-  if (failed) {
-    throw new Error(
-      `Couldn't execute ${versionCmd}. Is npm installed and up-to-date?`
-    )
-  }
 }
