@@ -3,12 +3,6 @@ import semver from 'semver'
 import path from 'path'
 import { createRequire } from 'module'
 
-const INSTRUCTIONS = {
-  npm: (packageName: string) => `npm install --save-dev ${packageName}`,
-  pnpm: (packageName: string) => `pnpm add -D ${packageName}`,
-  yarn: (packageName: string) => `yarn add -D ${packageName}`,
-}
-
 type Logger = (message: string) => void
 
 export async function importOnDemand(
@@ -67,7 +61,7 @@ async function installAndReturnDir(
   logger: Logger
 ) {
   const installPackage = `npx -y -p ${packageName}@${version}`
-  logger(`Executing '${installPackage}' ...`)
+  logger(`Installing... (${installPackage})`)
   const emitPath = `node -e 'console.log(process.env.PATH)'`
   const { failed, stdout } = await execaCommand(
     `${installPackage} ${emitPath}`,
@@ -99,12 +93,23 @@ async function installAndReturnDir(
   }
 
   logger(`Installed into ${nodeModulesPath}.`)
+  logger(
+    `To skip this step in future, run: ${installInstructions(
+      packageName,
+      version
+    )}`
+  )
 
   return nodeModulesPath
 }
 
+const INSTRUCTIONS = {
+  npm: (packageName: string) => `npm install --save-dev ${packageName}`,
+  pnpm: (packageName: string) => `pnpm add -D ${packageName}`,
+  yarn: (packageName: string) => `yarn add -D ${packageName}`,
+}
 function installInstructions(packageName: string, version: string) {
-  return INSTRUCTIONS[getPackageManager()](packageName)
+  return INSTRUCTIONS[getPackageManager()](`${packageName}@${version}`)
 }
 
 export function getPackageManager(): keyof typeof INSTRUCTIONS {

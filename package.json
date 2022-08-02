@@ -1,7 +1,7 @@
 {
   "name": "iod",
-  "version": "0.0.2",
-  "description": "Import On-Demand",
+  "version": "0.0.1",
+  "description": "[IOD] Import On-Demand: defer NPM installs until runtime, using NPX.",
   "main": "lib/index.js",
   "type": "module",
   "scripts": {
@@ -12,6 +12,7 @@
   "keywords": [],
   "author": "Glen Maddern <glenmaddern@gmail.com>",
   "license": "ISC",
+  "homepage": "https://github.com/geelen/import-on-demand",
   "devDependencies": {
     "@types/node": "^18.6.3",
     "@types/semver": "^7.3.10",

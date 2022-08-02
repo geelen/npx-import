@@ -6,7 +6,7 @@ try {
 } catch (e) {
   console.log("YESS, No Left pad!!")
 
-  const leftPad = await importOnDemand('left-pad', '1.3.0')
-  console.log(`OMFG IT WORKS`)
-  console.log(leftPad("omfg", 25))
+  console.log(`We're in a real terminal, let's load left-pad!`)
+  const leftPad = await importOnDemand('left-pad', '1.3.0', () => process.stdout.write('.'))
+  console.log(leftPad(`Right aligned text!`, 42))
 }
