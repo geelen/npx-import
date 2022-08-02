@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "execa": "^6.1.0",
+    "parse-package-name": "^1.0.0",
     "semver": "^7.3.7"
   }
 }

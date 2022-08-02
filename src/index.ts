@@ -2,25 +2,30 @@ import { execaCommand } from 'execa'
 import semver from 'semver'
 import path from 'path'
 import { createRequire } from 'module'
+import { parse } from 'parse-package-name'
 
 type Logger = (message: string) => void
 
-export async function importOnDemand(
-  packageName: string,
-  version: string = 'latest',
+export async function importOnDemand<T = unknown>(
+  pkg: string,
   logger: Logger = (message: string) => console.log(`[IOD] ${message}`)
-): Promise<any> {
+): Promise<T> {
+  const { name: packageName, version, path } = parse(pkg)
+  const packageWithPath =
+    path.length > 0 ? [packageName, path].join('/') : packageName
   try {
-    return await import(packageName)
+    return await import(packageWithPath)
   } catch (e) {
     logger(
-      `${packageName} not available locally. Attempting to use npx to install temporarily.`
+      `${packageWithPath} not available locally. Attempting to use npx to install temporarily.`
     )
     try {
-      return await installAndImport(packageName, version, logger)
+      await checkNpxVersion()
+      const installDir = await installAndReturnDir(packageName, version, logger)
+      return await createRequire(installDir)(packageWithPath)
     } catch (e) {
       throw new Error(
-        `IOD (Import On-Demand) failed for ${packageName} with message:\n    ${e.message}\n\n` +
+        `IOD (Import On-Demand) failed for ${packageWithPath} with message:\n    ${e.message}\n\n` +
           `You should install ${packageName} locally: \n    ` +
           installInstructions(packageName, version) +
           `\n\n`
@@ -29,15 +34,10 @@ export async function importOnDemand(
   }
 }
 
-async function installAndImport(
-  packageName: string,
-  version: string,
-  logger: Logger
-) {
-  await checkNpxVersion()
-  const installDir = await installAndReturnDir(packageName, version, logger)
-  return await createRequire(installDir)(packageName)
-}
+// export async function importOnDemandMulti<T = unknown>(
+//   packages: PackageSpecifier[],
+//   logger: Logger = (message: string) => console.log(`[IOD] ${message}`)
+// ): Promise<T> {}
 
 async function checkNpxVersion() {
   const versionCmd = `npx --version`
