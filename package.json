@@ -1,13 +1,23 @@
 {
-  "name": "iimport",
+  "name": "iod",
   "version": "0.0.2",
-  "description": "",
-  "main": "index.js",
-  "bin": "index.js",
+  "description": "Import On-Demand",
+  "main": "lib/index.js",
+  "type": "module",
   "scripts": {
-    "go": "node index.js"
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "node --experimental-vm-modules test/run.js"
   },
   "keywords": [],
   "author": "Glen Maddern <glenmaddern@gmail.com>",
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^18.6.3",
+    "prettier": "^2.7.1",
+    "typescript": "^4.7.4"
+  },
+  "dependencies": {
+    "execa": "^6.1.0"
+  }
 }
