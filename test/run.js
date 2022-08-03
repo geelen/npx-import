@@ -7,6 +7,6 @@ try {
   console.log("YESS, No Left pad!!")
 
   console.log(`We're in a real terminal, let's load left-pad!`)
-  const leftPad = await importOnDemand('left-pad', '1.3.0')
+  const leftPad = await npxImport('left-pad', '1.3.0')
   console.log(leftPad(`Right aligned text!`, 42))
 }

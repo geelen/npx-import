@@ -7,7 +7,8 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "test": "node --experimental-vm-modules test/run.js"
+    "test": "vitest",
+    "test:watch": "vitest --watch"
   },
   "keywords": [],
   "author": "Glen Maddern <glenmaddern@gmail.com>",
@@ -17,7 +18,8 @@
     "@types/node": "^18.6.3",
     "@types/semver": "^7.3.10",
     "prettier": "^2.7.1",
-    "typescript": "^4.7.4"
+    "typescript": "^4.7.4",
+    "vitest": "^0.20.3"
   },
   "dependencies": {
     "execa": "^6.1.0",

@@ -13,6 +13,7 @@ export async function importOnDemand<T = unknown>(
   const { name: packageName, version, path } = parse(pkg)
   const packageWithPath =
     path.length > 0 ? [packageName, path].join('/') : packageName
+  console.log({packageWithPath})
   try {
     return await import(packageWithPath)
   } catch (e) {
