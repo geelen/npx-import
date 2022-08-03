@@ -2,6 +2,22 @@
 
 **Use `npx` to defer installation of dependencies to runtime**
 
+## Usage
+
+This can be used as a drop-in replacement for [dynamic `import()`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/import):
+
+```ts
+// Dynamic import normall requires dependencies to be preinstalled:
+const normalDep = await import('big-dep') // Throws if big-dep is missing.
+```
+
+```ts
+import { npxImport } from 'npx-import'
+
+// npxImport will try to transparently use npx to fetch big-dep and include it
+const dependency = await npxImport('big-dep')
+```
+
 ## Installation
 
 ```
@@ -10,20 +26,6 @@ pnpm add -P iod
 yarn add iod
 ```
 
-## Usage
-
-Anywhere in your app, you can do:
-
-```ts
-import { importOnDemand } from 'iod'
-
-if (process.stdout.isTTY) {
-  console.log(`We're in a real terminal, let's load left-pad!`)
-  // Use it as a direct replacement for .import() (https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/import)
-  const leftPad = await importOnDemand('left-pad')
-  console.log(leftPad(`Right aligned text!`, 80))
-}
-```   
 
 Produces:
 
