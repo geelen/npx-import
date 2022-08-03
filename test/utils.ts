@@ -49,11 +49,16 @@ export async function npxImportFailed(pkg: string, errorMatcher: string | RegExp
   expect(_import).toHaveBeenCalledOnce()
 }
 
-export async function npxImportSucceeded(pkg: string, logMatcher?: string | RegExp) {
-  _import.mockRejectedValueOnce('not-found')
+export async function npxImportSucceeded(pkg: string | string[], logMatcher?: string | RegExp) {
+  const pkgs = Array.isArray(pkg) ? pkg : [pkg]
+  for (let i = 0; i < pkgs.length; i++) {
+    _import.mockRejectedValueOnce('not-found')
+  }
   const logs: string[] = []
   const imported = await npxImport(pkg, (msg: string) => logs.push(msg))
-  expect(_import).toHaveBeenCalledOnce()
+  expect(_import).toHaveBeenCalledTimes(pkgs.length)
+
+  console.log(logs)
   if (logMatcher) {
     expect(logs.join('\n')).toMatch(logMatcher)
   }

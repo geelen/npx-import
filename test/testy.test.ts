@@ -151,18 +151,53 @@ describe(`npxImport`, () => {
   describe('success cases', () => {
     test(`Should call relative import and return`, async () => {
       const npxDirectoryHash = randomString(12)
+      const basePath = `/Users/glen/.npm/_npx/${npxDirectoryHash}/node_modules`
 
       expectExecaCommand('npx --version').returning({ stdout: '8.1.2' })
       expectExecaCommand(`npx -y -p @org/pkg@my-tag node -e 'console.log(process.env.PATH)'`, {
         shell: true,
       }).returning({ stdout: getNpxPath(npxDirectoryHash) })
-      expectRelativeImport(
-        `/Users/glen/.npm/_npx/${npxDirectoryHash}/node_modules`,
-        '@org/pkg/lib/index.js'
-      ).returning({ foo: 1, bar: 2 })
+      expectRelativeImport(basePath, '@org/pkg/lib/index.js').returning({ foo: 1, bar: 2 })
 
-      const imported = await npxImportSucceeded('@org/pkg@my-tag/lib/index.js')
+      const imported = await npxImportSucceeded(
+        '@org/pkg@my-tag/lib/index.js',
+        matchesAllLines(
+          `@org/pkg/lib/index.js not available locally. Attempting to use npx to install temporarily.`,
+          `Installing... (npx -y -p @org/pkg@my-tag)`,
+          `Installed into ${basePath}.`,
+          `To skip this step in future, run: pnpm add -D @org/pkg@my-tag`
+        )
+      )
       expect(imported).toStrictEqual({ foo: 1, bar: 2 })
+    })
+
+    test(`Should install two packages`, async () => {
+      const npxDirectoryHash = randomString(12)
+      const basePath = `/Users/glen/.npm/_npx/${npxDirectoryHash}/node_modules`
+
+      expectExecaCommand('npx --version').returning({ stdout: '8.1.2' })
+      expectExecaCommand(
+        `npx -y -p pkg-a@latest -p pkg-b@latest node -e 'console.log(process.env.PATH)'`,
+        {
+          shell: true,
+        }
+      ).returning({ stdout: getNpxPath(npxDirectoryHash) })
+      expectRelativeImport(basePath, 'pkg-a').returning({ name: 'pkg-a', foo: 1 })
+      expectRelativeImport(basePath, 'pkg-b').returning({ name: 'pkg-b', bar: 1 })
+
+      const imported = await npxImportSucceeded(
+        ['pkg-a', 'pkg-b'],
+        matchesAllLines(
+          'Packages pkg-a, pkg-b not available locally. Attempting to use npx to install temporarily.',
+          'Installing... (npx -y -p pkg-a@latest -p pkg-b@latest)',
+          `Installed into ${basePath}.`,
+          'To skip this step in future, run: pnpm add -D pkg-a@latest pkg-b@latest'
+        )
+      )
+      expect(imported).toStrictEqual([
+        { name: 'pkg-a', foo: 1 },
+        { name: 'pkg-b', bar: 1 },
+      ])
     })
   })
 })

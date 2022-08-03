@@ -1,42 +1,84 @@
 import semver from 'semver'
 import path from 'path'
-import {parse} from 'parse-package-name'
-import {_importRelative, _import} from './utils'
+import { parse } from 'parse-package-name'
+import { _import, _importRelative } from './utils'
 import { execaCommand } from 'execa'
 
 type Logger = (message: string) => void
 
+type Package = {
+  name: string
+  packageWithPath: string
+  version: string
+  path: string
+  imported: typeof NOT_INSTALLED | any
+}
+
+const NOT_INSTALLED = Symbol()
+
 export async function npxImport<T = unknown>(
-  pkg: string,
+  pkg: string | string[],
   logger: Logger = (message: string) => console.log(`[IOD] ${message}`)
 ): Promise<T> {
-  const { name: packageName, version, path } = parse(pkg)
-  const packageWithPath = [packageName, path].join('')
-  try {
-    return await _import(packageWithPath)
-  } catch (e) {
+  const packages = await checkPackagesAvailableLocally(pkg)
+  const missingPackages = Object.values(packages).filter((p) => p.imported === NOT_INSTALLED)
+  if (missingPackages.length > 0) {
     logger(
-      `${packageWithPath} not available locally. Attempting to use npx to install temporarily.`
+      `${
+        missingPackages.length > 1
+          ? `Packages ${missingPackages.map((p) => p.packageWithPath).join(', ')}`
+          : missingPackages[0].packageWithPath
+      } not available locally. Attempting to use npx to install temporarily.`
     )
     try {
       await checkNpxVersion()
-      const installDir = await installAndReturnDir(packageName, version, logger)
-      return await _importRelative(installDir, packageWithPath)
+      const installDir = await installAndReturnDir(missingPackages, logger)
+      for (const pkg of missingPackages) {
+        packages[pkg.name].imported = await _importRelative(installDir, pkg.packageWithPath)
+      }
     } catch (e) {
       throw new Error(
-        `IOD (Import On-Demand) failed for ${packageWithPath} with message:\n    ${e.message}\n\n` +
-          `You should install ${packageName} locally: \n    ` +
-          installInstructions(packageName, version) +
+        `IOD (Import On-Demand) failed for ${missingPackages
+          .map((p) => p.packageWithPath)
+          .join(',')} with message:\n    ${e.message}\n\n` +
+          `You should install ${missingPackages.map((p) => p.name).join(', ')} locally: \n    ` +
+          installInstructions(missingPackages) +
           `\n\n`
       )
     }
   }
+
+  // If you pass in an array, you get an array back.
+  const results = Object.values(packages).map((p) => p.imported);
+  return Array.isArray(pkg) ? results : results[0]
 }
 
-// export async function importOnDemandMulti<T = unknown>(
-//   packages: PackageSpecifier[],
-//   logger: Logger = (message: string) => console.log(`[IOD] ${message}`)
-// ): Promise<T> {}
+async function checkPackagesAvailableLocally(pkg: string | string[]) {
+  const packages: Record<string, Package> = {}
+
+  for (const p of Array.isArray(pkg) ? pkg : [pkg]) {
+    const { name, version, path } = parse(p)
+    if (packages[name])
+      throw `npx-import cannot import the same package twice! Got: ${p} but already saw ${name} earlier!`
+    const packageWithPath = [name, path].join('')
+    packages[name] = {
+      name,
+      packageWithPath,
+      version,
+      path,
+      imported: await tryImport(packageWithPath),
+    }
+  }
+  return packages
+}
+
+async function tryImport(packageWithPath: string) {
+  try {
+    return await _import(packageWithPath)
+  } catch (e) {
+    return NOT_INSTALLED
+  }
+}
 
 async function checkNpxVersion() {
   const versionCmd = `npx --version`
@@ -50,16 +92,18 @@ async function checkNpxVersion() {
   }
 }
 
-async function installAndReturnDir(packageName: string, version: string, logger: Logger) {
-  const installPackage = `npx -y -p ${packageName}@${version}`
+async function installAndReturnDir(packages: Package[], logger: Logger) {
+  const installPackage = `npx -y ${packages.map((p) => `-p ${p.name}@${p.version}`).join(' ')}`
   logger(`Installing... (${installPackage})`)
   const emitPath = `node -e 'console.log(process.env.PATH)'`
-  const fullCmd = `${installPackage} ${emitPath}`;
+  const fullCmd = `${installPackage} ${emitPath}`
   const { failed, stdout } = await execaCommand(fullCmd, {
     shell: true,
   })
   if (failed) {
-    throw new Error(`Failed installing ${packageName} using: ${installPackage}.`)
+    throw new Error(
+      `Failed installing ${packages.map((p) => p.name).join(',')} using: ${installPackage}.`
+    )
   }
   const paths = stdout.split(':')
   const tempPath = paths.find((p) => /\/\.npm\/_npx\//.exec(p))
@@ -80,7 +124,7 @@ async function installAndReturnDir(packageName: string, version: string, logger:
   }
 
   logger(`Installed into ${nodeModulesPath}.`)
-  logger(`To skip this step in future, run: ${installInstructions(packageName, version)}`)
+  logger(`To skip this step in future, run: ${installInstructions(packages)}`)
 
   return nodeModulesPath
 }
@@ -90,8 +134,8 @@ const INSTRUCTIONS = {
   pnpm: (packageName: string) => `pnpm add -D ${packageName}`,
   yarn: (packageName: string) => `yarn add -D ${packageName}`,
 }
-function installInstructions(packageName: string, version: string) {
-  return INSTRUCTIONS[getPackageManager()](`${packageName}@${version}`)
+function installInstructions(packages: Package[]) {
+  return INSTRUCTIONS[getPackageManager()](packages.map((p) => `${p.name}@${p.version}`).join(' '))
 }
 
 export function getPackageManager(): keyof typeof INSTRUCTIONS {
