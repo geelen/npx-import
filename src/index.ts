@@ -11,8 +11,7 @@ export async function importOnDemand<T = unknown>(
   logger: Logger = (message: string) => console.log(`[IOD] ${message}`)
 ): Promise<T> {
   const { name: packageName, version, path } = parse(pkg)
-  const packageWithPath = path.length > 0 ? [packageName, path].join('/') : packageName
-  console.log({ packageWithPath })
+  const packageWithPath = [packageName, path].join('')
   try {
     return await nativeDynamicImport(packageWithPath)
   } catch (e) {
