@@ -1,8 +1,8 @@
-import { execaCommand } from 'execa'
 import semver from 'semver'
 import path from 'path'
 import { createRequire } from 'module'
 import { parse } from 'parse-package-name'
+import { execaCommand, nativeDynamicImport } from './utils'
 
 type Logger = (message: string) => void
 
@@ -11,11 +11,10 @@ export async function importOnDemand<T = unknown>(
   logger: Logger = (message: string) => console.log(`[IOD] ${message}`)
 ): Promise<T> {
   const { name: packageName, version, path } = parse(pkg)
-  const packageWithPath =
-    path.length > 0 ? [packageName, path].join('/') : packageName
-  console.log({packageWithPath})
+  const packageWithPath = path.length > 0 ? [packageName, path].join('/') : packageName
+  console.log({ packageWithPath })
   try {
-    return await import(packageWithPath)
+    return await nativeDynamicImport(packageWithPath)
   } catch (e) {
     logger(
       `${packageWithPath} not available locally. Attempting to use npx to install temporarily.`
@@ -44,36 +43,23 @@ async function checkNpxVersion() {
   const versionCmd = `npx --version`
   const { failed, stdout: npmVersion } = await execaCommand(versionCmd)
   if (failed) {
-    throw new Error(
-      `Couldn't execute ${versionCmd}. Is npm installed and up-to-date?`
-    )
+    throw new Error(`Couldn't execute ${versionCmd}. Is npm installed and up-to-date?`)
   }
 
   if (!semver.gte(npmVersion, '8.0.0')) {
-    throw new Error(
-      `Require npm version 8+. Got '${npmVersion}' when running '${versionCmd}'`
-    )
+    throw new Error(`Require npm version 8+. Got '${npmVersion}' when running '${versionCmd}'`)
   }
 }
 
-async function installAndReturnDir(
-  packageName: string,
-  version: string,
-  logger: Logger
-) {
+async function installAndReturnDir(packageName: string, version: string, logger: Logger) {
   const installPackage = `npx -y -p ${packageName}@${version}`
   logger(`Installing... (${installPackage})`)
   const emitPath = `node -e 'console.log(process.env.PATH)'`
-  const { failed, stdout } = await execaCommand(
-    `${installPackage} ${emitPath}`,
-    {
-      shell: true,
-    }
-  )
+  const { failed, stdout } = await execaCommand(`${installPackage} ${emitPath}`, {
+    shell: true,
+  })
   if (failed) {
-    throw new Error(
-      `Failed installing ${packageName} using: ${installPackage}.`
-    )
+    throw new Error(`Failed installing ${packageName} using: ${installPackage}.`)
   }
   const paths = stdout.split(':')
   const tempPath = paths.find((p) => /\/\.npm\/_npx\//.exec(p))
@@ -94,12 +80,7 @@ async function installAndReturnDir(
   }
 
   logger(`Installed into ${nodeModulesPath}.`)
-  logger(
-    `To skip this step in future, run: ${installInstructions(
-      packageName,
-      version
-    )}`
-  )
+  logger(`To skip this step in future, run: ${installInstructions(packageName, version)}`)
 
   return nodeModulesPath
 }
