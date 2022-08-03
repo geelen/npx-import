@@ -13,7 +13,7 @@ let numExecaCommands = 0
 export const postAssertions = new Set<Function>()
 export const runPostAssertions = async () => {
   for (const fn of postAssertions) {
-    await fn()
+    fn()
   }
   postAssertions.clear()
   numExecaCommands = 0
@@ -36,7 +36,7 @@ export const successfulImport = async (pkg: string) => {
   expect(Object.keys(dynoImporto)).toStrictEqual(['fake', 'pkg', 'mocking'])
 }
 
-export async function failedImport(pkg: string, errorMatcher: string) {
+export async function failedImport(pkg: string, errorMatcher: string | RegExp) {
   nativeDynamicImport.mockRejectedValueOnce('not-found')
   await expect(async () => {
     await importOnDemand(pkg)
@@ -49,6 +49,9 @@ export function expectExecaCommand(cmd: string, ...optsAndRetVal: any[]) {
   const retVal = optsAndRetVal.at(-1) as object | Error
 
   const cmdNr = ++numExecaCommands
+  postAssertions.add(() => {
+    expect(execaCommand).toHaveBeenNthCalledWith(cmdNr, ...[cmd, ...opts])
+  })
 
   if (retVal instanceof Error) {
     execaCommand.mockRejectedValueOnce(retVal)
@@ -60,8 +63,4 @@ export function expectExecaCommand(cmd: string, ...optsAndRetVal: any[]) {
       ...retVal,
     })
   }
-
-  return () => {
-      expect(execaCommand).toHaveBeenNthCalledWith(cmdNr, ...[cmd, ...opts])
-    }
 }

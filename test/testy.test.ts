@@ -70,7 +70,7 @@ describe(`npxImport`, () => {
       expect(execaCommand).toHaveBeenNthCalledWith(1, 'npx --version')
     })
 
-    test.only(`Should fail if NPX can't be found`, async () => {
+    test(`Should fail if NPX can't be found`, async () => {
       expectExecaCommand('npx --version', { failed: true })
 
       await failedImport(
@@ -82,40 +82,28 @@ describe(`npxImport`, () => {
     test(`Should fail if NPX is old`, async () => {
       expectExecaCommand('npx --version', { stdout: '7.1.2' })
 
-      nativeDynamicImport.mockRejectedValueOnce('not-found')
-      await expect(async () => {
-        await importOnDemand('npm-too-old')
-      }).rejects.toThrowError(`Require npm version 8+. Got '7.1.2' when running 'npx --version'`)
+      await failedImport(
+        'npm-too-old',
+        `Require npm version 8+. Got '7.1.2' when running 'npx --version'`
+      )
     })
 
     test(`Should attempt to install, passing through whatever happens`, async () => {
       expectExecaCommand('npx --version', { stdout: '8.1.2' })
-      const wasCalled = expectExecaCommand(
+      expectExecaCommand(
         `npx -y -p broken-install@latest node -e 'console.log(process.env.PATH)'`,
         { shell: true },
         new Error('EXPLODED TRYING TO INSTALL')
       )
 
-      nativeDynamicImport.mockRejectedValueOnce('not-found')
-      await expect(async () => {
-        await importOnDemand('broken-install')
-      }).rejects.toThrowError(
+      await failedImport(
+        'broken-install',
         matchesAllLines(
           `EXPLODED TRYING TO INSTALL`,
           `You should install broken-install locally:`,
           `pnpm add -D broken-install@latest`
         )
       )
-
-      expect(execaCommand).toHaveBeenNthCalledWith(1, 'npx --version')
-      // expect(execaCommand).toHaveBeenNthCalledWith(
-      //   2,
-      //   ...[
-      //     `npx -y -p broken-install@latest node -e 'console.log(process.env.PATH)'`,
-      //     { shell: true },
-      //   ]
-      // )
-      wasCalled()
     })
   })
 })
