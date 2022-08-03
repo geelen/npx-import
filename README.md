@@ -1,6 +1,6 @@
 # 🧙‍♂️ `npx-import` 🧙‍♀️
 
-### Runtime dependencies, magically installed on demand ✨
+### Runtime dependencies, installed _as if by magic_ ✨
 
 <br/>
 
