@@ -54,7 +54,9 @@ async function installAndReturnDir(packageName: string, version: string, logger:
   const installPackage = `npx -y -p ${packageName}@${version}`
   logger(`Installing... (${installPackage})`)
   const emitPath = `node -e 'console.log(process.env.PATH)'`
-  const { failed, stdout } = await execaCommand(`${installPackage} ${emitPath}`, {
+  const fullCmd = `${installPackage} ${emitPath}`;
+  console.log({fullCmd})
+  const { failed, stdout } = await execaCommand(fullCmd, {
     shell: true,
   })
   if (failed) {
