@@ -7,6 +7,7 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
+    "go": "node --experimental-vm-modules test/go.js",
     "test": "pnpm build && vitest",
     "test:watch": "vitest --watch"
   },

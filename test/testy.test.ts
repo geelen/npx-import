@@ -40,7 +40,7 @@ describe(`npxImport`, () => {
       expect(_import).toHaveBeenCalledWith('@fake/library')
     })
 
-    test(`should ignore versions (for now)`, async () => {
+    test(`should ignore versions when trying to import locally (for now)`, async () => {
       await npxImportLocalPackage('fake-library@1.2.3')
       expect(_import).toHaveBeenCalledWith('fake-library')
 
@@ -48,7 +48,7 @@ describe(`npxImport`, () => {
       expect(_import).toHaveBeenCalledWith('@fake/library')
     })
 
-    test(`should ignore tags`, async () => {
+    test(`should ignore tags when trying to import locally`, async () => {
       await npxImportLocalPackage('fake-library@beta')
       expect(_import).toHaveBeenCalledWith('fake-library')
 
@@ -95,16 +95,16 @@ describe(`npxImport`, () => {
     test(`Should attempt to install, passing through whatever happens`, async () => {
       expectExecaCommand('npx --version').returning({ stdout: '8.1.2' })
       expectExecaCommand(
-        `npx -y -p broken-install@latest node -e 'console.log(process.env.PATH)'`,
+        `npx -y -p broken-install@^2.0.0 node -e 'console.log(process.env.PATH)'`,
         { shell: true }
       ).returning(new Error('EXPLODED TRYING TO INSTALL'))
 
       await npxImportFailed(
-        'broken-install',
+        'broken-install@^2.0.0',
         matchesAllLines(
           `EXPLODED TRYING TO INSTALL`,
           `You should install broken-install locally:`,
-          `pnpm add -D broken-install@latest`
+          `pnpm add -D broken-install@^2.0.0`
         )
       )
     })
@@ -232,6 +232,35 @@ describe(`npxImport`, () => {
       expect(imported).toStrictEqual([
         { name: 'pkg-a', foo: 1, local: true },
         { name: 'pkg-b', bar: 2, local: false },
+      ])
+    })
+
+    test(`Should escape versions to be path-safe`, async () => {
+      const npxDirectoryHash = randomString(12)
+      const basePath = `/Users/glen/.npm/_npx/${npxDirectoryHash}/node_modules`
+
+      expectExecaCommand('npx --version').returning({ stdout: '8.1.2' })
+      expectExecaCommand(
+        `npx -y -p 'pkg-a@>1.0.0' -p 'pkg-b@*' node -e 'console.log(process.env.PATH)'`,
+        {
+          shell: true,
+        }
+      ).returning({ stdout: getNpxPath(npxDirectoryHash) })
+      expectRelativeImport(basePath, 'pkg-a').returning({ name: 'pkg-a', foo: 1 })
+      expectRelativeImport(basePath, 'pkg-b').returning({ name: 'pkg-b', bar: 2 })
+
+      const imported = await npxImportSucceeded(
+        ['pkg-a@>1.0.0', 'pkg-b@*'],
+        matchesAllLines(
+          'Packages pkg-a, pkg-b not available locally. Attempting to use npx to install temporarily.',
+          `Installing... (npx -y -p 'pkg-a@>1.0.0' -p 'pkg-b@*')`,
+          `Installed into ${basePath}.`,
+          `To skip this step in future, run: pnpm add -D 'pkg-a@>1.0.0' 'pkg-b@*'`
+        )
+      )
+      expect(imported).toStrictEqual([
+        { name: 'pkg-a', foo: 1 },
+        { name: 'pkg-b', bar: 2 },
       ])
     })
   })

@@ -1,7 +1,7 @@
 import semver from 'semver'
 import path from 'path'
 import { parse } from 'parse-package-name'
-import { _import, _importRelative } from './utils'
+import { _import, _importRelative } from './utils.js'
 import { execaCommand } from 'execa'
 
 type Logger = (message: string) => void
@@ -18,7 +18,7 @@ const NOT_INSTALLED = Symbol()
 
 export async function npxImport<T = unknown>(
   pkg: string | string[],
-  logger: Logger = (message: string) => console.log(`[IOD] ${message}`)
+  logger: Logger = (message: string) => console.log(`[NPXI] ${message}`)
 ): Promise<T> {
   const packages = await checkPackagesAvailableLocally(pkg)
   const missingPackages = Object.values(packages).filter((p) => p.imported === NOT_INSTALLED)
@@ -38,7 +38,7 @@ export async function npxImport<T = unknown>(
       }
     } catch (e) {
       throw new Error(
-        `IOD (Import On-Demand) failed for ${missingPackages
+        `npx-import failed for ${missingPackages
           .map((p) => p.packageWithPath)
           .join(',')} with message:\n    ${e.message}\n\n` +
           `You should install ${missingPackages.map((p) => p.name).join(', ')} locally: \n    ` +
@@ -49,7 +49,7 @@ export async function npxImport<T = unknown>(
   }
 
   // If you pass in an array, you get an array back.
-  const results = Object.values(packages).map((p) => p.imported);
+  const results = Object.values(packages).map((p) => p.imported)
   return Array.isArray(pkg) ? results : results[0]
 }
 
@@ -93,7 +93,7 @@ async function checkNpxVersion() {
 }
 
 async function installAndReturnDir(packages: Package[], logger: Logger) {
-  const installPackage = `npx -y ${packages.map((p) => `-p ${p.name}@${p.version}`).join(' ')}`
+  const installPackage = `npx -y ${packages.map((p) => `-p ${formatForCLI(p)}`).join(' ')}`
   logger(`Installing... (${installPackage})`)
   const emitPath = `node -e 'console.log(process.env.PATH)'`
   const fullCmd = `${installPackage} ${emitPath}`
@@ -135,7 +135,7 @@ const INSTRUCTIONS = {
   yarn: (packageName: string) => `yarn add -D ${packageName}`,
 }
 function installInstructions(packages: Package[]) {
-  return INSTRUCTIONS[getPackageManager()](packages.map((p) => `${p.name}@${p.version}`).join(' '))
+  return INSTRUCTIONS[getPackageManager()](packages.map(formatForCLI).join(' '))
 }
 
 export function getPackageManager(): keyof typeof INSTRUCTIONS {
@@ -159,4 +159,10 @@ export function getPackageManager(): keyof typeof INSTRUCTIONS {
   }
 
   return 'npm'
+}
+
+// If the version contains special chars, wrap in ''
+const formatForCLI = (p) => {
+  const unescaped = `${p.name}@${p.version}`
+  return unescaped.match(/[<>*]/) ? `'${unescaped}'` : unescaped
 }
