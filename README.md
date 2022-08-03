@@ -23,7 +23,7 @@ if (process.stdout.isTTY) {
   const leftPad = await importOnDemand('left-pad')
   console.log(leftPad(`Right aligned text!`, 80))
 }
-```
+```   
 
 Produces:
 
@@ -41,7 +41,7 @@ We're in a real terminal, let's load left-pad!
 Since package versions are no longer tracked in your `package.json`, we recommend being explicit
 
 ```ts
-const lazyDep = await importOnDemand('left-pad', '1.3.0')
+const lazyDep = await importOnDemand('left-pad@1.3.0')
 ```
 
 IOD also takes a third argument, which lets you customise, or silence, the log output. Each line that would normally be printed is passed to the logger function:
@@ -58,3 +58,5 @@ if (process.stdout.isTTY) {
 We're in a real terminal, let's load left-pad!
 ....                       Right aligned text!
 ```
+
+## Rationale
