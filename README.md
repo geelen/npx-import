@@ -14,7 +14,7 @@ import { npxImport } from 'npx-import'
 const dependency = await npxImport('big-dep')
 ```
 
-It's exactly like [`npx`](https://docs.npmjs.com/cli/v8/commands/npx), but for `import()`! <small><small><small>(hence the name)</small></small></small>
+It's exactly like [`npx`](https://docs.npmjs.com/cli/v8/commands/npx), but for `import()`! <sub><sub><sub>(hence the name)</sub></sub></sub>
 
 Is this a good idea? See [FAQ](#faq) below.
 
