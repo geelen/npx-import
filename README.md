@@ -1,6 +1,6 @@
-# IOD — Import On-Demand
+# NPX Import
 
-**Defer NPM installs until runtime, using `npx`**
+**Use `npx` to defer installation of dependencies to runtime**
 
 ## Installation
 
