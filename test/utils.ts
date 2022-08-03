@@ -1,7 +1,6 @@
 import { expect, MockedFunction } from 'vitest'
-import { importOnDemand } from '../lib'
+import { npxImport } from '../lib'
 import crypto from 'node:crypto'
-
 // Surely there's a better way to mock stuff out??
 import { execaCommand as _execaCommand } from 'execa'
 import * as utils from '../lib/utils'
@@ -37,7 +36,7 @@ export function matchesAllLines(...strings: string[]) {
 
 export const npxImportLocalPackage = async (pkg: string) => {
   _import.mockResolvedValueOnce({ fake: 1, pkg: 2, mocking: 3 })
-  const dynoImporto = await importOnDemand(pkg)
+  const dynoImporto = await npxImport(pkg)
   expect(dynoImporto).toBeTruthy()
   expect(Object.keys(dynoImporto)).toStrictEqual(['fake', 'pkg', 'mocking'])
 }
@@ -45,7 +44,7 @@ export const npxImportLocalPackage = async (pkg: string) => {
 export async function npxImportFailed(pkg: string, errorMatcher: string | RegExp) {
   _import.mockRejectedValueOnce('not-found')
   await expect(async () => {
-    await importOnDemand(pkg, NOOP_LOGGER)
+    await npxImport(pkg, NOOP_LOGGER)
   }).rejects.toThrowError(errorMatcher)
   expect(_import).toHaveBeenCalledOnce()
 }
@@ -53,7 +52,7 @@ export async function npxImportFailed(pkg: string, errorMatcher: string | RegExp
 export async function npxImportSucceeded(pkg: string, logMatcher?: string | RegExp) {
   _import.mockRejectedValueOnce('not-found')
   const logs: string[] = []
-  const imported = await importOnDemand(pkg, (msg: string) => logs.push(msg))
+  const imported = await npxImport(pkg, (msg: string) => logs.push(msg))
   expect(_import).toHaveBeenCalledOnce()
   if (logMatcher) {
     expect(logs.join('\n')).toMatch(logMatcher)
@@ -66,7 +65,7 @@ export function expectMock<T = any>(
   args: any[],
   transformSuccess: (retVal: T) => T = (x) => x
 ) {
-  const mockedCmd = MOCKS[mock];
+  const mockedCmd = MOCKS[mock]
   const cmdNr = increment(mock)
   postAssertions.add(() => {
     expect(mockedCmd).toHaveBeenNthCalledWith(cmdNr, ...args)
@@ -82,7 +81,6 @@ export function expectMock<T = any>(
     },
   }
 }
-
 
 export function expectExecaCommand(cmd: string, ...opts: any[]) {
   return expectMock<object>('execaCommand', [cmd, ...opts], (retVal) => ({

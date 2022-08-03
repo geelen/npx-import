@@ -1,7 +1,7 @@
 {
-  "name": "iod",
+  "name": "npx-import",
   "version": "0.0.1",
-  "description": "[IOD] Import On-Demand: defer NPM installs until runtime, using NPX.",
+  "description": "NPX import: dynamically install & import packages at runtime, using NPX.",
   "main": "lib/index.js",
   "type": "module",
   "scripts": {

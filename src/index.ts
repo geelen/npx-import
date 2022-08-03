@@ -6,7 +6,7 @@ import { execaCommand } from 'execa'
 
 type Logger = (message: string) => void
 
-export async function importOnDemand<T = unknown>(
+export async function npxImport<T = unknown>(
   pkg: string,
   logger: Logger = (message: string) => console.log(`[IOD] ${message}`)
 ): Promise<T> {
