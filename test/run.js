@@ -1,7 +1,7 @@
 import {importOnDemand} from '../lib/index.js'
 
 try {
-  const leftPad = await import('left-pad')
+  const leftPad = await import('left-padf')
   console.error(`NOOO, LEFT PAD IS HERE!`)
 } catch (e) {
   console.log("YESS, No Left pad!!")

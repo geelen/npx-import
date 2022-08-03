@@ -1,25 +1,31 @@
 import { expect, MockedFunction } from 'vitest'
 import { importOnDemand } from '../lib'
+import crypto from 'node:crypto'
 
 // Surely there's a better way to mock stuff out??
+import { execaCommand as _execaCommand } from 'execa'
 import * as utils from '../lib/utils'
 
-const { nativeDynamicImport, execaCommand } = utils as unknown as {
-  nativeDynamicImport: MockedFunction<typeof utils.nativeDynamicImport>
-  execaCommand: MockedFunction<any>
+const { _import, _importRelative } = utils as unknown as {
+  _import: MockedFunction<typeof utils._import>
+  _importRelative: MockedFunction<typeof utils._importRelative>
 }
+const execaCommand = _execaCommand as MockedFunction<any>
+export { _import, _importRelative, execaCommand }
+const MOCKS = { _import, _importRelative, execaCommand }
 
-let numExecaCommands = 0
+let MOCK_COUNTERS: { [key in keyof typeof MOCKS]?: number } = {}
 export const postAssertions = new Set<Function>()
 export const runPostAssertions = async () => {
   for (const fn of postAssertions) {
     fn()
   }
   postAssertions.clear()
-  numExecaCommands = 0
+  MOCK_COUNTERS = {}
 }
-
-export { nativeDynamicImport, execaCommand }
+const increment = (mock: keyof typeof MOCKS) =>
+  (MOCK_COUNTERS[mock] = (MOCK_COUNTERS[mock] ?? 0) + 1)
+const NOOP_LOGGER = () => {}
 
 export function matchesAllLines(...strings: string[]) {
   return new RegExp(
@@ -29,38 +35,72 @@ export function matchesAllLines(...strings: string[]) {
   )
 }
 
-export const successfulImport = async (pkg: string) => {
-  nativeDynamicImport.mockResolvedValueOnce({ fake: 1, pkg: 2, mocking: 3 })
+export const npxImportLocalPackage = async (pkg: string) => {
+  _import.mockResolvedValueOnce({ fake: 1, pkg: 2, mocking: 3 })
   const dynoImporto = await importOnDemand(pkg)
   expect(dynoImporto).toBeTruthy()
   expect(Object.keys(dynoImporto)).toStrictEqual(['fake', 'pkg', 'mocking'])
 }
 
-export async function failedImport(pkg: string, errorMatcher: string | RegExp) {
-  nativeDynamicImport.mockRejectedValueOnce('not-found')
+export async function npxImportFailed(pkg: string, errorMatcher: string | RegExp) {
+  _import.mockRejectedValueOnce('not-found')
   await expect(async () => {
-    await importOnDemand(pkg)
+    await importOnDemand(pkg, NOOP_LOGGER)
   }).rejects.toThrowError(errorMatcher)
-  expect(nativeDynamicImport).toHaveBeenCalledOnce()
+  expect(_import).toHaveBeenCalledOnce()
 }
 
-export function expectExecaCommand(cmd: string, ...optsAndRetVal: any[]) {
-  const opts = optsAndRetVal.slice(0, -1)
-  const retVal = optsAndRetVal.at(-1) as object | Error
+export async function npxImportSucceeded(pkg: string, logMatcher?: string | RegExp) {
+  _import.mockRejectedValueOnce('not-found')
+  const logs: string[] = []
+  const imported = await importOnDemand(pkg, (msg: string) => logs.push(msg))
+  expect(_import).toHaveBeenCalledOnce()
+  if (logMatcher) {
+    expect(logs.join('\n')).toMatch(logMatcher)
+  }
+  return imported
+}
 
-  const cmdNr = ++numExecaCommands
+export function expectMock<T = any>(
+  mock: keyof typeof MOCKS,
+  args: any[],
+  transformSuccess: (retVal: T) => T = (x) => x
+) {
+  const mockedCmd = MOCKS[mock];
+  const cmdNr = increment(mock)
   postAssertions.add(() => {
-    expect(execaCommand).toHaveBeenNthCalledWith(cmdNr, ...[cmd, ...opts])
+    expect(mockedCmd).toHaveBeenNthCalledWith(cmdNr, ...args)
   })
 
-  if (retVal instanceof Error) {
-    execaCommand.mockRejectedValueOnce(retVal)
-  } else {
-    execaCommand.mockResolvedValueOnce({
-      failed: false,
-      stdout: '',
-      stderr: '',
-      ...retVal,
-    })
+  return {
+    returning(retVal: any | Error) {
+      if (retVal instanceof Error) {
+        mockedCmd.mockRejectedValueOnce(retVal)
+      } else {
+        mockedCmd.mockResolvedValueOnce(transformSuccess(retVal))
+      }
+    },
   }
+}
+
+
+export function expectExecaCommand(cmd: string, ...opts: any[]) {
+  return expectMock<object>('execaCommand', [cmd, ...opts], (retVal) => ({
+    failed: false,
+    stdout: '',
+    stderr: '',
+    ...retVal,
+  }))
+}
+
+export function expectRelativeImport(basePath: string, packageImport: string) {
+  return expectMock('_importRelative', [basePath, packageImport])
+}
+
+export function randomString(length: number) {
+  return crypto.randomBytes(length).toString('hex')
+}
+
+export function getNpxPath(npxDirectoryHash: string) {
+  return `/my/local/pwd/node_modules/.bin:/my/local/node_modules/.bin:/my/node_modules/.bin:/node_modules/.bin:/Users/glen/.nvm/versions/node/v18.3.0/lib/node_modules/npm/node_modules/@npmcli/run-script/lib/node-gyp-bin:/Users/glen/.npm/_npx/${npxDirectoryHash}/node_modules/.bin:/Users/glen/go/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin:/usr/X11/bin:/usr/local/go/bin`
 }

@@ -1,8 +1,8 @@
 import semver from 'semver'
 import path from 'path'
-import { createRequire } from 'module'
-import { parse } from 'parse-package-name'
-import { execaCommand, nativeDynamicImport } from './utils'
+import {parse} from 'parse-package-name'
+import {_importRelative, _import} from './utils'
+import { execaCommand } from 'execa'
 
 type Logger = (message: string) => void
 
@@ -13,7 +13,7 @@ export async function importOnDemand<T = unknown>(
   const { name: packageName, version, path } = parse(pkg)
   const packageWithPath = [packageName, path].join('')
   try {
-    return await nativeDynamicImport(packageWithPath)
+    return await _import(packageWithPath)
   } catch (e) {
     logger(
       `${packageWithPath} not available locally. Attempting to use npx to install temporarily.`
@@ -21,7 +21,7 @@ export async function importOnDemand<T = unknown>(
     try {
       await checkNpxVersion()
       const installDir = await installAndReturnDir(packageName, version, logger)
-      return await createRequire(installDir)(packageWithPath)
+      return await _importRelative(installDir, packageWithPath)
     } catch (e) {
       throw new Error(
         `IOD (Import On-Demand) failed for ${packageWithPath} with message:\n    ${e.message}\n\n` +
@@ -55,7 +55,6 @@ async function installAndReturnDir(packageName: string, version: string, logger:
   logger(`Installing... (${installPackage})`)
   const emitPath = `node -e 'console.log(process.env.PATH)'`
   const fullCmd = `${installPackage} ${emitPath}`;
-  console.log({fullCmd})
   const { failed, stdout } = await execaCommand(fullCmd, {
     shell: true,
   })
