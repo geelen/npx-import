@@ -58,7 +58,6 @@ export async function npxImportSucceeded(pkg: string | string[], logMatcher?: st
   const imported = await npxImport(pkg, (msg: string) => logs.push(msg))
   expect(_import).toHaveBeenCalledTimes(pkgs.length)
 
-  console.log(logs)
   if (logMatcher) {
     expect(logs.join('\n')).toMatch(logMatcher)
   }

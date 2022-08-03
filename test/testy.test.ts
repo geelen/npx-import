@@ -11,6 +11,7 @@ import {
   npxImportSucceeded,
   expectRelativeImport,
 } from './utils'
+import { npxImport } from '../lib'
 
 vi.mock('../lib/utils', () => {
   return {
@@ -183,7 +184,7 @@ describe(`npxImport`, () => {
         }
       ).returning({ stdout: getNpxPath(npxDirectoryHash) })
       expectRelativeImport(basePath, 'pkg-a').returning({ name: 'pkg-a', foo: 1 })
-      expectRelativeImport(basePath, 'pkg-b').returning({ name: 'pkg-b', bar: 1 })
+      expectRelativeImport(basePath, 'pkg-b').returning({ name: 'pkg-b', bar: 2 })
 
       const imported = await npxImportSucceeded(
         ['pkg-a', 'pkg-b'],
@@ -196,7 +197,41 @@ describe(`npxImport`, () => {
       )
       expect(imported).toStrictEqual([
         { name: 'pkg-a', foo: 1 },
-        { name: 'pkg-b', bar: 1 },
+        { name: 'pkg-b', bar: 2 },
+      ])
+    })
+
+    test(`Should install one package if the other is already present`, async () => {
+      _import.mockResolvedValueOnce({ name: 'pkg-a', foo: 1, local: true })
+      _import.mockRejectedValueOnce('not-found') // pkg-b
+
+      const npxDirectoryHash = randomString(12)
+      const basePath = `/Users/glen/.npm/_npx/${npxDirectoryHash}/node_modules`
+
+      expectExecaCommand('npx --version').returning({ stdout: '8.1.2' })
+      expectExecaCommand(
+        `npx -y -p pkg-b@latest node -e 'console.log(process.env.PATH)'`,
+        {
+          shell: true,
+        }
+      ).returning({ stdout: getNpxPath(npxDirectoryHash) })
+      expectRelativeImport(basePath, 'pkg-b').returning({ name: 'pkg-b', bar: 2, local: false })
+
+      const logs: string[] = []
+      const imported = await npxImport(['pkg-a', 'pkg-b'], (msg: string) => logs.push(msg))
+      expect(_import).toHaveBeenCalledTimes(2)
+
+      expect(logs.join('\n')).toMatch(
+        matchesAllLines(
+          'pkg-b not available locally. Attempting to use npx to install temporarily.',
+          'Installing... (npx -y -p pkg-b@latest)',
+          `Installed into ${basePath}.`,
+          'To skip this step in future, run: pnpm add -D pkg-b@latest'
+        )
+      )
+      expect(imported).toStrictEqual([
+        { name: 'pkg-a', foo: 1, local: true },
+        { name: 'pkg-b', bar: 2, local: false },
       ])
     })
   })
