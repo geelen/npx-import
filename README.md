@@ -93,9 +93,9 @@ pnpm add -D big-dep
 
 ```ts
 import { npxImport } from 'npx-import'
-import type BigDep from 'big-dep'
+type BigDepType = typeof import('big-dep')
 
-const bigDep = await npxImport<BigDep>('big-dep')
+const bigDep = await npxImport<BigDepType>('big-dep')
 ```
 
 ## API
