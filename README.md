@@ -14,16 +14,19 @@ import { npxImport } from 'npx-import'
 const dependency = await npxImport('big-dep')
 ```
 
-It's exactly like [`npx`](https://docs.npmjs.com/cli/v8/commands/npx), but for `import()`! <sub><sub><sub>(hence the name)</sub></sub></sub>
+It's exactly like [`npx`](https://docs.npmjs.com/cli/v8/commands/npx), but for `import()`! <sub><sub><sup>(hence the name)</sup></sub></sub>
 
 Is this a good idea? See [FAQ](#faq) below.
 
 ## Usage
 
-`npx-import` is ideal for cases where you have some dependency that's either large or not used very often, for example:
+`npx-import` is ideal for deferring installation for dependencies that are unexpectedly large, require native compilation, or not used very often (or some combination thereof), for example:
 
 ```ts
+// Statically import small/common deps as normal
 import textRenderer from 'tiny-text-renderer'
+
+// Use npxImport to defer 
 import { npxImport } from 'npx-import'
 
 export async function writeToFile(report: Report, filename: string) {
@@ -56,7 +59,18 @@ This is a PNG! We'll have to compile imagemagick!
 Done!
 ```
 
-This can make your initial install much quicker, without forcing the user to stop what they're doing, install a related package, and retry.
+For some types of dependencies, this is a much better UX than the alternatives:
+
+* You either add `imagemagick-utils` & `chonk-pdf-boi` as dependencies, slowing down initial install.
+* The first time a user tries to export a PNG/PDF, you error out with instructions to install the relevant package and retry.
+* You pause, prompt the user for confirmation, then try to detect which package manager they're using and auto-install the dependency for them.
+
+The last of these generally works well but `npx-import` has slightly different properties:
+
+* The user doesn't need to be prompted—if the dependency can be sourced, installed & transparently included, the program doesn't need to be interrupted.
+* Your user's current project directory is never altered as a side-effect of running a program. 
+
+Most importantly, though **it's compatible with `npx`!** For example, `npx some-cli --help` can be super fast but `npx some-cli export --type=pdf` can transparently download the required dependencies during execution. It's super neat!
 
 ## Installation
 
@@ -121,17 +135,127 @@ Need to install the following packages:
 Ok to proceed? (y)
 ```
 
-And, of course, if you call `npx some-package` and that's either already installed in your project _or_ you've accepted the prompt before (and NPM hasn't cleaned its cache recently) it will just work. It's actually super nice for sharing CLIs.
+This gives the user a chance to see their mistake and prevent being hacked to bits.
 
 ### But hang on, you're never prompting the user to confirm!?
 
-Ah yes, that seems to go against the previous point. But it's not being triggered from a potentially clumsy human on a keyboard, it's running inside some source code you've (by definition) already authorised to run on your machine.
+Ah yes, that seems to go against the previous point. But `npx-import` isn't being triggered from a potentially clumsy human on a keyboard, it's running inside some source code you've (by definition) already authorised to run on your machine.
 
-The alternative is publishing these as normal dependencies of your project and having your users download them at install time. You don't get prompted for those, but it slows down every user's first run...
+`npx-import` is an alternative to publishing these as normal dependencies of your project and having your users download them at install time. Users aren't prompted to approve every transitive dependency of the things they install/run, so `npx-import` doesn't either.
+
+### What if the user has already installed the dependency somewhere?
+
+Then `npxImport` short-circuits, returning the local version without logging anything out. This is what the user is instructed to do to "skip this step in future". In other words, `npxImport()` first tries to call your native `import()`, and only does anything if that fails.
+
+Note that this also works for multiple dependencies, `npxImport(['pkg-a', 'pkg-b', 'pkg-c'])` will only fetch & install those that are missing.
 
 ### What about multiple projects? Won't you get conflicting versions?
 
-As it turns out, no!
+As it turns out, no! While I wasn't paying attention, `npx` got really smart! To understand why, we need to look at how `npx` works:
+
+For starters, `npx some-pkg` is a shorthand for `npx -p some-pkg <command>`, where `<command>` is whatever `bin` that `some-pkg` declares. Often, the `<command>` and the package name are the same (e.g. `npx prettier`), but it's the `bin` field inside the package that's really being used. Otherwise, scoped packages like `npx @some-org/cli-tool` would never work. If there's no `bin` field declared (e.g. for `chokidar`, you need `npx chokidar-cli`), or if there's more than one (e.g. for `typescript`, you need `npx -p typescript tsc`), you have to use the expanded form.
+
+But there's no requirement that `<command>` is a `bin` inside the package at all! It can be any command (at least for `npx`, `pnpm dlx` and `yarn dlx` have different restrictions), for example, we can inject a `node -e` command and start to learn about what's going on:
+
+```
+❯ npx -y -p is-odd node -e 'console.log(process.env.PATH.split(":"))' | grep .npm/_npx
+  '/Users/glen/.npm/_npx/e1b5bd0eb9f99fbc/node_modules/.bin',
+```
+
+Using `process.env.PATH` and searching for `.npm/_npx` is, on OSX with NPX v8+, a reliable way to find out where `npx` is installing these temporary packages. Let's look inside:
+
+```
+❯ ll2 /Users/glen/.npm/_npx/e1b5bd0eb9f99fbc/
+drwxr-xr-x    - glen  4 Aug 11:07  /Users/glen/.npm/_npx/e1b5bd0eb9f99fbc
+drwxr-xr-x    - glen  4 Aug 11:07 ├──  node_modules
+.rw-r--r--  780 glen  4 Aug 11:07 │  ├──  .package-lock.json
+drwxr-xr-x    - glen  4 Aug 11:07 │  ├──  is-number
+drwxr-xr-x    - glen  4 Aug 11:07 │  └──  is-odd
+.rw-r--r-- 1.4k glen  4 Aug 11:07 ├──  package-lock.json
+.rw-r--r--   51 glen  4 Aug 11:07 └──  package.json
+
+❯ cat /Users/glen/.npm/_npx/e1b5bd0eb9f99fbc/package.json
+{
+  "dependencies": {
+    "is-odd": "^3.0.1"
+  }
+}
+```
+
+That looks like a pretty normal project directory to me!
+
+> Aside, `ll2` is my super rad alias for `exa --icons -laTL 2`. See [exa](https://github.com/ogham/exa).
+
+Now, the crucial bit: **every time `npx` runs for some unique set of packages it creates a new directory**. That goes for installing multiple deps at once but also for different named/pinned versions/tags for individual packages:
+
+```
+❯ export LOG_NPX_DIR="node -e 'console.log(process.env.PATH.split(\":\").filter(p => p.match(/\.npm\/_npx/)))'"
+
+❯ npx -y -p is-odd $LOG_NPX_DIR
+[ '/Users/glen/.npm/_npx/e1b5bd0eb9f99fbc/node_modules/.bin' ]
+
+❯ npx -y -p is-odd@latest $LOG_NPX_DIR
+[ '/Users/glen/.npm/_npx/ecc6e2260c717fec/node_modules/.bin' ]
+
+❯ npx -y -p is-odd@3.0.1 $LOG_NPX_DIR
+[ '/Users/glen/.npm/_npx/c41e9ab9d1d9c43f/node_modules/.bin' ]
+
+❯ npx -y -p is-odd@\^3.0.1 $LOG_NPX_DIR
+[ '/Users/glen/.npm/_npx/e86896689f5aebbb/node_modules/.bin' ]
+```
+
+Note that **every one of these commands downloaded the same version of `is-odd`**, but because they were referenced using different identifiers, `_` vs `latest` vs `3.0.1` vs `>3.0.1`, `npx` played it safe and made a new temporary directory.
+
+For multiple packages, the same rule applies, although order is not important:
+
+```
+❯ npx -y -p is-odd -p is-even $LOG_NPX_DIR
+[ '/Users/glen/.npm/_npx/f9af4fded130fd33/node_modules/.bin' ]
+
+❯ npx -y -p is-even -p is-odd $LOG_NPX_DIR
+[ '/Users/glen/.npm/_npx/f9af4fded130fd33/node_modules/.bin' ]
+
+❯ ll2 /Users/glen/.npm/_npx/f9af4fded130fd33
+drwxr-xr-x    - glen  4 Aug 11:37  /Users/glen/.npm/_npx/f9af4fded130fd33
+drwxr-xr-x    - glen  4 Aug 11:37 ├──  node_modules
+.rw-r--r-- 2.6k glen  4 Aug 11:37 │  ├──  .package-lock.json
+drwxr-xr-x    - glen  4 Aug 11:37 │  ├──  is-buffer
+drwxr-xr-x    - glen  4 Aug 11:37 │  ├──  is-even
+drwxr-xr-x    - glen  4 Aug 11:37 │  ├──  is-number
+drwxr-xr-x    - glen  4 Aug 11:37 │  ├──  is-odd
+drwxr-xr-x    - glen  4 Aug 11:37 │  └──  kind-of
+.rw-r--r-- 4.8k glen  4 Aug 11:37 ├──  package-lock.json
+.rw-r--r--   76 glen  4 Aug 11:37 └──  package.json
+
+❯ cat /Users/glen/.npm/_npx/f9af4fded130fd33/package.json
+{
+  "dependencies": {
+    "is-even": "^1.0.0",
+    "is-odd": "^3.0.1"
+  }
+}
+```
+
+So `npx` is doing exactly the same as an `npm install`, with a `package.json`, `package-lock.json`, `node_modules` etc. It's just dynamically creating directories based on some hash of its inputs. It's super clever!
+
+### But what about transitive deps? Won't you get duplication?
+
+Sadly, yes. If both your package `main-pkg` and `util-a` depend on `util-b`, then calling `npxImport('util-a')` from within `main-pkg` will create a new directory with a second copy of `util-b`. If there are globals in that package, or if the version specifiers are slightly different, you could potentially have problems.
+
+It's probably possible to [detect this in future](https://github.com/geelen/npx-import/issues/2) and warn/error out. But for now, I recommend using `npxImport` for mostly self-contained dependencies.
+
+### What about version mismatch with local files?
+
+If a user has `pkg-a` version `1.0.0` installed, but one of their packages calls `npxImport('pkg-a@^2.0.0')`, `npxImport` isn't smart enough ([yet](https://github.com/geelen/npx-import/issues/3)) to know that the local version of `pkg-a` doesn't match the version range specified (since it's using native `import()` under the hood). Without `npxImport`, the `npm install` step would have had a chance to bump the installed version of `pkg-a` to meet the requirements of _all_ packages being used, but we're bypassing that.
+
+This will be fixed in a future version.
+
+### What kind of packages would you use this for?
+
+* Anything with native extensions needing building (do that when you need it)
+* Packages with large downloads (e.g. puppeteer, sqlite-node)
+* CLI packages that want to make `npx my-cli --help` or `npx my-cli init` really fast and dependency-free, but also allow `npx my-cli <cmd>` to pull in arbitrary deps on-demand, without forcing the user to stop, create a local directory, and install dev dependencies.
+* Anything already making heavy use of `npx`. You're in the jungle already, baby.
 
 ---
 

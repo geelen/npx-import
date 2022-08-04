@@ -41,12 +41,18 @@ export const npxImportLocalPackage = async (pkg: string) => {
   expect(Object.keys(dynoImporto)).toStrictEqual(['fake', 'pkg', 'mocking'])
 }
 
-export async function npxImportFailed(pkg: string, errorMatcher: string | RegExp) {
+export async function pkgParseFailed(pkg: string | string[], errorMatcher: string | RegExp) {
+  await expect(async () => {
+    await npxImport(pkg, NOOP_LOGGER)
+  }).rejects.toThrowError(errorMatcher)
+}
+
+export async function npxImportFailed(pkg: string | string[], errorMatcher: string | RegExp) {
   _import.mockRejectedValueOnce('not-found')
   await expect(async () => {
     await npxImport(pkg, NOOP_LOGGER)
   }).rejects.toThrowError(errorMatcher)
-  expect(_import).toHaveBeenCalledOnce()
+  expect(_import).toHaveBeenCalled()
 }
 
 export async function npxImportSucceeded(pkg: string | string[], logMatcher?: string | RegExp) {

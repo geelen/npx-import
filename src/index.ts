@@ -3,6 +3,7 @@ import path from 'path'
 import { parse } from 'parse-package-name'
 import { _import, _importRelative } from './utils.js'
 import { execaCommand } from 'execa'
+import validateNpmName from 'validate-npm-package-name'
 
 type Logger = (message: string) => void
 
@@ -57,9 +58,11 @@ async function checkPackagesAvailableLocally(pkg: string | string[]) {
   const packages: Record<string, Package> = {}
 
   for (const p of Array.isArray(pkg) ? pkg : [pkg]) {
-    const { name, version, path } = parse(p)
+    const { name, version, path } = parseAndValidate(p)
     if (packages[name])
-      throw `npx-import cannot import the same package twice! Got: ${p} but already saw ${name} earlier!`
+      throw new Error(
+        `npx-import cannot import the same package twice! Got: '${p}' but already saw '${name}' earlier!`
+      )
     const packageWithPath = [name, path].join('')
     packages[name] = {
       name,
@@ -70,6 +73,25 @@ async function checkPackagesAvailableLocally(pkg: string | string[]) {
     }
   }
   return packages
+}
+
+function parseAndValidate(p: string) {
+  if (p.match(/^[.\/]/)) {
+    throw new Error(`npx-import can only import packages, not relative paths: got ${p}`)
+  }
+  const { name, version, path } = parse(p)
+  const validation = validateNpmName(name)
+  if (!validation.validForNewPackages) {
+    if (validation.warnings?.some((w) => w.match(/is a core module name/)))
+      throw new Error(
+        `npx-import can only import NPM packages, got core module '${name}' from '${p}'`
+      )
+    else
+      throw new Error(
+        `npx-import can't import invalid package name: parsed name '${name}' from '${p}'`
+      )
+  }
+  return { name, version, path }
 }
 
 async function tryImport(packageWithPath: string) {

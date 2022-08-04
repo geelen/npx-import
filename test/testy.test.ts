@@ -10,6 +10,7 @@ import {
   npxImportLocalPackage,
   npxImportSucceeded,
   expectRelativeImport,
+  pkgParseFailed,
 } from './utils'
 import { npxImport } from '../lib'
 
@@ -74,6 +75,68 @@ describe(`npxImport`, () => {
   })
 
   describe('failure cases', () => {
+    test(`Should fail for relative paths`, async () => {
+      await pkgParseFailed(
+        './local-dep/index.js',
+        `npx-import can only import packages, not relative paths: got ./local-dep/index.js`
+      )
+      await pkgParseFailed(
+        '../local-dep/index.js',
+        `npx-import can only import packages, not relative paths: got ../local-dep/index.js`
+      )
+      await pkgParseFailed(
+        '/local-dep/index.js',
+        `npx-import can only import packages, not relative paths: got /local-dep/index.js`
+      )
+    })
+
+    test(`Should fail for invalid package names`, async () => {
+      await pkgParseFailed(
+        'excited!',
+        `npx-import can't import invalid package name: parsed name 'excited!' from 'excited!'`
+      )
+      await pkgParseFailed(
+        ' leading-space:and:weirdchars',
+        `npx-import can't import invalid package name: parsed name ' leading-space:and:weirdchars' from ' leading-space:and:weirdchars'`
+      )
+      await pkgParseFailed(
+        '@npm-zors/money!time.js',
+        `npx-import can't import invalid package name: parsed name '@npm-zors/money!time.js' from '@npm-zors/money!time.js'`
+      )
+      await pkgParseFailed(
+        'fs',
+        `npx-import can only import NPM packages, got core module 'fs' from 'fs'`
+      )
+      await pkgParseFailed(
+        'fs@latest',
+        `npx-import can only import NPM packages, got core module 'fs' from 'fs@latest'`
+      )
+      await pkgParseFailed(
+        'fs/promises',
+        `npx-import can only import NPM packages, got core module 'fs' from 'fs/promises'`
+      )
+    })
+
+    test(`Should fail for the same package passed twice`, async () => {
+      await npxImportFailed(
+        ['pkg-a', 'pkg-a'],
+        `npx-import cannot import the same package twice! Got: 'pkg-a' but already saw 'pkg-a' earlier!`
+      )
+      await npxImportFailed(
+        ['pkg-a@latest', 'pkg-a'],
+        `npx-import cannot import the same package twice! Got: 'pkg-a' but already saw 'pkg-a' earlier!`
+      )
+      await npxImportFailed(
+        ['pkg-a', 'pkg-a@latest'],
+        `npx-import cannot import the same package twice! Got: 'pkg-a@latest' but already saw 'pkg-a' earlier!`
+      )
+      // Arguably, we could make this one work in future.
+      await npxImportFailed(
+        ['pkg-a/path.js', 'pkg-a/other.js'],
+        `npx-import cannot import the same package twice! Got: 'pkg-a/other.js' but already saw 'pkg-a' earlier!`
+      )
+    })
+
     test(`Should fail if NPX can't be found`, async () => {
       expectExecaCommand('npx --version').returning({ failed: true })
 
@@ -209,12 +272,9 @@ describe(`npxImport`, () => {
       const basePath = `/Users/glen/.npm/_npx/${npxDirectoryHash}/node_modules`
 
       expectExecaCommand('npx --version').returning({ stdout: '8.1.2' })
-      expectExecaCommand(
-        `npx -y -p pkg-b@latest node -e 'console.log(process.env.PATH)'`,
-        {
-          shell: true,
-        }
-      ).returning({ stdout: getNpxPath(npxDirectoryHash) })
+      expectExecaCommand(`npx -y -p pkg-b@latest node -e 'console.log(process.env.PATH)'`, {
+        shell: true,
+      }).returning({ stdout: getNpxPath(npxDirectoryHash) })
       expectRelativeImport(basePath, 'pkg-b').returning({ name: 'pkg-b', bar: 2, local: false })
 
       const logs: string[] = []
