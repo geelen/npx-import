@@ -2,7 +2,7 @@
 
 ### Runtime dependencies, installed _as if by magic_ ✨
 
-[![](https://img.shields.io/badge/author-@glenmaddern-blue.svg?style=flat)](https://twitter.com/glenmaddern) ![npm](https://img.shields.io/npm/v/npx-import) ![GitHub last commit](https://img.shields.io/github/last-commit/geelen/npx-import)
+[![twitter](https://img.shields.io/badge/author-@glenmaddern-blue.svg?style=flat)](https://twitter.com/glenmaddern) [![npm](https://img.shields.io/npm/v/npx-import)](https://www.npmjs.com/package/npx-import) [![GitHub last commit](https://img.shields.io/github/last-commit/geelen/npx-import)](https://github.com/geelen/npx-import)
 
 `npx-import` can be used as a drop-in replacement for [dynamic `import()`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/import):
 
@@ -30,14 +30,17 @@ import textRenderer from 'tiny-text-renderer'
 import { npxImport } from 'npx-import'
 
 export async function writeToFile(report: Report, filename: string) {
+
   if (filename.endsWith('.png')) {
     console.log(`This is a PNG! We'll have to compile imagemagick!`)
     const magick = await npxImport('imagemagick-utils@^1.1.0')
     await magick.renderToPNG(report, filename)
+
   } else if (filename.endsWith('.pdf')) {
     console.log(`Argh, a PDF!? Go make a cuppa, this'll take a while...`)
     const pdfBoi = await npxImport('chonk-pdf-boi@3.1.4')
     await pdfBoi.generate(report, filename)
+
   } else {
     console.log(`Writing to ${filename}...`)
     await textRenderer.write(report, filename)

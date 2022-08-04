@@ -1,7 +1,7 @@
 {
   "name": "npx-import",
   "version": "0.0.2",
-  "description": "NPX import: dynamically install & import packages at runtime, using NPX.",
+  "description": "Runtime dependencies, installed as if by magic ✨",
   "main": "lib/index.js",
   "type": "module",
   "scripts": {
@@ -14,7 +14,7 @@
   "keywords": [],
   "author": "Glen Maddern <glenmaddern@gmail.com>",
   "license": "ISC",
-  "homepage": "https://github.com/geelen/import-on-demand",
+  "homepage": "https://github.com/geelen/npx-import",
   "devDependencies": {
     "@types/node": "^18.6.3",
     "@types/semver": "^7.3.10",
