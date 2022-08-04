@@ -5,13 +5,15 @@ import crypto from 'node:crypto'
 import { execaCommand as _execaCommand } from 'execa'
 import * as utils from '../lib/utils'
 
-const { _import, _importRelative } = utils as unknown as {
+const { _import, _importRelative, _resolve, _resolveRelative } = utils as unknown as {
   _import: MockedFunction<typeof utils._import>
   _importRelative: MockedFunction<typeof utils._importRelative>
+  _resolve: MockedFunction<typeof utils._resolve>
+  _resolveRelative: MockedFunction<typeof utils._resolveRelative>
 }
 const execaCommand = _execaCommand as MockedFunction<any>
-export { _import, _importRelative, execaCommand }
-const MOCKS = { _import, _importRelative, execaCommand }
+export { _import, _importRelative, execaCommand, _resolve, _resolveRelative }
+const MOCKS = { _import, _importRelative, execaCommand, _resolve, _resolveRelative }
 
 let MOCK_COUNTERS: { [key in keyof typeof MOCKS]?: number } = {}
 export const postAssertions = new Set<Function>()

@@ -26,7 +26,7 @@ Is this a good idea? See [FAQ](#faq) below.
 // Statically import small/common deps as normal
 import textRenderer from 'tiny-text-renderer'
 
-// Use npxImport to defer 
+// Use npxImport to defer
 import { npxImport } from 'npx-import'
 
 export async function writeToFile(report: Report, filename: string) {
@@ -61,14 +61,14 @@ Done!
 
 For some types of dependencies, this is a much better UX than the alternatives:
 
-* You either add `imagemagick-utils` & `chonk-pdf-boi` as dependencies, slowing down initial install.
-* The first time a user tries to export a PNG/PDF, you error out with instructions to install the relevant package and retry.
-* You pause, prompt the user for confirmation, then try to detect which package manager they're using and auto-install the dependency for them.
+- You either add `imagemagick-utils` & `chonk-pdf-boi` as dependencies, slowing down initial install.
+- The first time a user tries to export a PNG/PDF, you error out with instructions to install the relevant package and retry.
+- You pause, prompt the user for confirmation, then try to detect which package manager they're using and auto-install the dependency for them.
 
 The last of these generally works well but `npx-import` has slightly different properties:
 
-* The user doesn't need to be prompted—if the dependency can be sourced, installed & transparently included, the program doesn't need to be interrupted.
-* Your user's current project directory is never altered as a side-effect of running a program. 
+- The user doesn't need to be prompted—if the dependency can be sourced, installed & transparently included, the program doesn't need to be interrupted.
+- Your user's current project directory is never altered as a side-effect of running a program.
 
 Most importantly, though **it's compatible with `npx`!** For example, `npx some-cli --help` can be super fast but `npx some-cli export --type=pdf` can transparently download the required dependencies during execution. It's super neat!
 
@@ -90,9 +90,9 @@ pnpm add -D big-dep
 
 ```ts
 import { npxImport } from 'npx-import'
-import type { BigDep } from 'big-dep'
+import type BigDep from 'big-dep'
 
-const bigDep = await npxImport<BigDep>('big-dep')
+const { default: bigDep } = await npxImport<{ default: BigDep }>('big-dep')
 ```
 
 ## Configuration
@@ -124,7 +124,7 @@ const [depA, depB] = await npxImport(['dep-a@7.8.2', 'dep-b@7.8.2'], grayLog)
 
 Nah it's good actually.
 
-### 🤨 No but seriously, isn't using `npx` a big security hole? 
+### 🤨 No but seriously, isn't using `npx` a big security hole?
 
 Initially, `npx` didn't prompt before downloading and executing a package, which was _definitely_ a security risk. But that's been [fixed since version 7](https://github.com/npm/npx/issues/9#issuecomment-786940691). Now, if you're intending to write `npx prettier` to format your code and accidentally type `npx prettomghackmycomputerpls`, you'll get a helpful prompt:
 
@@ -252,10 +252,10 @@ This will be fixed in a future version.
 
 ### 🫠 What kind of packages would you use this for?
 
-* Anything with native extensions needing building (do that when you need it)
-* Packages with large downloads (e.g. puppeteer, sqlite-node)
-* CLI packages that want to make `npx my-cli --help` or `npx my-cli init` really fast and dependency-free, but also allow `npx my-cli <cmd>` to pull in arbitrary deps on-demand, without forcing the user to stop, create a local directory, and install dev dependencies.
-* Anything already making heavy use of `npx`. You're in the jungle already, baby.
+- Anything with native extensions needing building (do that when you need it)
+- Packages with large downloads (e.g. puppeteer, sqlite-node)
+- CLI packages that want to make `npx my-cli --help` or `npx my-cli init` really fast and dependency-free, but also allow `npx my-cli <cmd>` to pull in arbitrary deps on-demand, without forcing the user to stop, create a local directory, and install dev dependencies.
+- Anything already making heavy use of `npx`. You're in the jungle already, baby.
 
 ---
 

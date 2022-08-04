@@ -1,7 +1,7 @@
 import semver from 'semver'
 import path from 'path'
 import { parse } from 'parse-package-name'
-import { _import, _importRelative } from './utils.js'
+import { _import, _importRelative, _resolve, _resolveRelative } from './utils.js'
 import { execaCommand } from 'execa'
 import validateNpmName from 'validate-npm-package-name'
 
@@ -12,17 +12,23 @@ type Package = {
   packageWithPath: string
   version: string
   path: string
-  imported: typeof NOT_INSTALLED | any
+  imported: typeof NOT_IMPORTABLE | any
+  local: boolean
 }
 
-const NOT_INSTALLED = Symbol()
+const NOT_IMPORTABLE = Symbol()
+const INSTALLED_LOCALLY = Symbol()
+const INSTALL_CACHE: Record<string, string | typeof INSTALLED_LOCALLY> = {}
 
 export async function npxImport<T = unknown>(
   pkg: string | string[],
   logger: Logger = (message: string) => console.log(`[NPXI] ${message}`)
 ): Promise<T> {
   const packages = await checkPackagesAvailableLocally(pkg)
-  const missingPackages = Object.values(packages).filter((p) => p.imported === NOT_INSTALLED)
+  const allPackages = Object.values(packages)
+  const localPackages = allPackages.filter((p) => p.imported !== NOT_IMPORTABLE)
+  const missingPackages = allPackages.filter((p) => p.imported === NOT_IMPORTABLE)
+
   if (missingPackages.length > 0) {
     logger(
       `${
@@ -36,6 +42,10 @@ export async function npxImport<T = unknown>(
       const installDir = await installAndReturnDir(missingPackages, logger)
       for (const pkg of missingPackages) {
         packages[pkg.name].imported = await _importRelative(installDir, pkg.packageWithPath)
+        INSTALL_CACHE[pkg.name] = installDir
+      }
+      for (const pkg of localPackages) {
+        INSTALL_CACHE[pkg.name] = INSTALLED_LOCALLY
       }
     } catch (e) {
       throw new Error(
@@ -49,9 +59,22 @@ export async function npxImport<T = unknown>(
     }
   }
 
+  const results = allPackages.map((p) => p.imported)
   // If you pass in an array, you get an array back.
-  const results = Object.values(packages).map((p) => p.imported)
   return Array.isArray(pkg) ? results : results[0]
+}
+
+export function npxResolve(pkg: string): string {
+  const { name, path } = parse(pkg)
+  const packageWithPath = [name, path].join('')
+  const cachedDir = INSTALL_CACHE[name]
+  if (!cachedDir) {
+    throw new Error(`You must call npxImport for a package before calling npxResolve. Got: ${pkg}`)
+  } else if (cachedDir === INSTALLED_LOCALLY) {
+    return _resolve(packageWithPath)
+  } else {
+    return _resolveRelative(cachedDir, packageWithPath)
+  }
 }
 
 async function checkPackagesAvailableLocally(pkg: string | string[]) {
@@ -64,12 +87,14 @@ async function checkPackagesAvailableLocally(pkg: string | string[]) {
         `npx-import cannot import the same package twice! Got: '${p}' but already saw '${name}' earlier!`
       )
     const packageWithPath = [name, path].join('')
+    const imported = await tryImport(packageWithPath)
     packages[name] = {
       name,
       packageWithPath,
       version,
       path,
-      imported: await tryImport(packageWithPath),
+      imported,
+      local: imported !== NOT_IMPORTABLE,
     }
   }
   return packages
@@ -98,7 +123,7 @@ async function tryImport(packageWithPath: string) {
   try {
     return await _import(packageWithPath)
   } catch (e) {
-    return NOT_INSTALLED
+    return NOT_IMPORTABLE
   }
 }
 

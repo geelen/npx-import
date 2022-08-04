@@ -5,6 +5,8 @@ import {
   getNpxPath,
   matchesAllLines,
   _import,
+  _resolve,
+  _resolveRelative,
   randomString,
   runPostAssertions,
   npxImportLocalPackage,
@@ -12,12 +14,14 @@ import {
   expectRelativeImport,
   pkgParseFailed,
 } from './utils'
-import { npxImport } from '../lib'
+import { npxImport, npxResolve } from '../lib'
 
 vi.mock('../lib/utils', () => {
   return {
     _import: vi.fn(),
     _importRelative: vi.fn(),
+    _resolve: vi.fn(),
+    _resolveRelative: vi.fn(),
   }
 })
 vi.mock('execa', () => {
@@ -323,5 +327,39 @@ describe(`npxImport`, () => {
         { name: 'pkg-b', bar: 2 },
       ])
     })
+  })
+})
+
+describe(`npxResolve`, () => {
+  afterEach(() => {
+    runPostAssertions()
+    vi.clearAllMocks()
+  })
+
+  test(`Should return one local one new directory`, async () => {
+    const npxDirectoryHash = randomString(12)
+    const basePath = `/Users/glen/.npm/_npx/${npxDirectoryHash}/node_modules`
+
+    _import.mockResolvedValueOnce({}) // pkg-a
+    _import.mockRejectedValueOnce('not-found') // pkg-b
+
+    expectExecaCommand('npx --version').returning({ stdout: '8.1.2' })
+    expectExecaCommand(`npx -y -p pkg-b@latest node -e 'console.log(process.env.PATH)'`, {
+      shell: true,
+    }).returning({ stdout: getNpxPath(npxDirectoryHash) })
+    expectRelativeImport(basePath, 'pkg-b').returning({ name: 'pkg-b', bar: 2, local: false })
+
+    await npxImport(['pkg-a', 'pkg-b'], () => {})
+    expect(_import).toHaveBeenCalledTimes(2)
+
+    _resolve.mockReturnValueOnce('/Users/glen/src/npx-import/pkg-a')
+    const localPath = npxResolve('pkg-a')
+    expect(localPath).toBe('/Users/glen/src/npx-import/pkg-a')
+    expect(_resolve).toHaveBeenLastCalledWith('pkg-a')
+
+    _resolveRelative.mockReturnValueOnce(`${basePath}/pkg-b`)
+    const tempPath = npxResolve('pkg-b')
+    expect(tempPath).toBe(`${basePath}/pkg-b`)
+    expect(_resolveRelative).toHaveBeenLastCalledWith(basePath, 'pkg-b')
   })
 })

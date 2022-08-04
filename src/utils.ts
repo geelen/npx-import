@@ -8,3 +8,11 @@ export async function _import(packageWithPath: string) {
 export async function _importRelative(installDir: string, packageWithPath: string) {
   return await createRequire(installDir)(packageWithPath)
 }
+
+export function _resolve(packageWithPath: string) {
+  return require.resolve(packageWithPath)
+}
+
+export function _resolveRelative(installDir: string, packageWithPath: string) {
+  return createRequire(installDir).resolve(packageWithPath)
+}
