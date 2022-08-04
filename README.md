@@ -95,7 +95,7 @@ import type BigDep from 'big-dep'
 const { default: bigDep } = await npxImport<{ default: BigDep }>('big-dep')
 ```
 
-## Configuration
+## API
 
 Since package versions are no longer tracked in your `package.json`, we recommend being explicit:
 
@@ -117,6 +117,19 @@ const [depA, depB] = await npxImport(['dep-a@7.8.2', 'dep-b@7.8.2'])
 const grayLog = (line: string) => console.log(chalk.gray(line))
 const [depA, depB] = await npxImport(['dep-a@7.8.2', 'dep-b@7.8.2'], grayLog)
 ```
+
+If you ever need the equivalent for `require.resolve` for a package, use `npxResolve`:
+
+```ts
+export function getSQLiteNativeBindingLocation() {
+  return path.resolve(
+    path.dirname(npxResolve("better-sqlite3")),
+    "../build/Release/better_sqlite3.node"
+  );
+}
+```
+
+Note, `npxResolve` requires that you'd previously called `npxImport` for the same package.
 
 ## FAQ
 
