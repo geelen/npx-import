@@ -1,6 +1,6 @@
 {
   "name": "npx-import",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "NPX import: dynamically install & import packages at runtime, using NPX.",
   "main": "lib/index.js",
   "type": "module",
