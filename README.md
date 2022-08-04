@@ -73,7 +73,7 @@ The last of these generally works well but `npx-import` has slightly different p
 - The user doesn't need to be prompted—if the dependency can be sourced, installed & transparently included, the program doesn't need to be interrupted.
 - Your user's current project directory is never altered as a side-effect of running a program.
 
-Most importantly, though **it's compatible with `npx`!** For example, `npx some-cli --help` can be super fast but `npx some-cli export --type=pdf` can transparently download the required dependencies during execution. It's super neat!
+Most importantly, though, **it's compatible with `npx`!** For example, `npx some-cli --help` can be super fast but `npx some-cli export --type=pdf` can transparently download the required dependencies during execution. It's super neat!
 
 ## Installation
 
@@ -95,12 +95,12 @@ pnpm add -D big-dep
 import { npxImport } from 'npx-import'
 import type BigDep from 'big-dep'
 
-const { default: bigDep } = await npxImport<{ default: BigDep }>('big-dep')
+const bigDep = await npxImport<BigDep>('big-dep')
 ```
 
 ## API
 
-Since package versions are no longer tracked in your `package.json`, we recommend being explicit:
+* Since package versions are no longer tracked in your `package.json`, we recommend being explicit:
 
 ```ts
 const lazyDep = await npxImport('left-pad@1.3.0')
@@ -108,7 +108,7 @@ const lazyDep = await npxImport('left-pad@1.3.0')
 
 Any package specifier that's valid in `package.json` will work here: e.g. `^1.0.0`, `~2.3.0`, `>4.0.0`
 
-You can also install multiple packages at once:
+* You can also install multiple packages at once:
 
 ```ts
 const [depA, depB] = await npxImport(['dep-a@7.8.2', 'dep-b@7.8.2'])
@@ -121,7 +121,7 @@ const grayLog = (line: string) => console.log(chalk.gray(line))
 const [depA, depB] = await npxImport(['dep-a@7.8.2', 'dep-b@7.8.2'], grayLog)
 ```
 
-If you ever need the equivalent for `require.resolve` for a package, use `npxResolve`:
+* Use `npxResolve` instead of `require.resolve` to get the path (local or temporary)
 
 ```ts
 export function getSQLiteNativeBindingLocation() {
@@ -271,7 +271,7 @@ This will be fixed in a future version.
 - Anything with native extensions needing building (do that when you need it)
 - Packages with large downloads (e.g. puppeteer, sqlite-node)
 - CLI packages that want to make `npx my-cli --help` or `npx my-cli init` really fast and dependency-free, but also allow `npx my-cli <cmd>` to pull in arbitrary deps on-demand, without forcing the user to stop, create a local directory, and install dev dependencies.
-- Anything already making heavy use of `npx`. You're in the jungle already, baby.
+- Anything already making heavy use of `npx`. You're in the jungle, baby.
 
 ---
 
