@@ -120,11 +120,11 @@ const [depA, depB] = await npxImport(['dep-a@7.8.2', 'dep-b@7.8.2'], grayLog)
 
 ## FAQ
 
-### Isn't this, like, a heroically bad idea?
+### 🤔 Isn't this, like, a heroically bad idea?
 
 Nah it's good actually.
 
-### No but seriously, isn't using `npx` a big security hole? 
+### 🤨 No but seriously, isn't using `npx` a big security hole? 
 
 Initially, `npx` didn't prompt before downloading and executing a package, which was _definitely_ a security risk. But that's been [fixed since version 7](https://github.com/npm/npx/issues/9#issuecomment-786940691). Now, if you're intending to write `npx prettier` to format your code and accidentally type `npx prettomghackmycomputerpls`, you'll get a helpful prompt:
 
@@ -137,19 +137,19 @@ Ok to proceed? (y)
 
 This gives the user a chance to see their mistake and prevent being hacked to bits.
 
-### But hang on, you're never prompting the user to confirm!?
+### 😠 But hang on, you're never prompting the user to confirm!
 
 Ah yes, that seems to go against the previous point. But `npx-import` isn't being triggered from a potentially clumsy human on a keyboard, it's running inside some source code you've (by definition) already authorised to run on your machine.
 
 `npx-import` is an alternative to publishing these as normal dependencies of your project and having your users download them at install time. Users aren't prompted to approve every transitive dependency of the things they install/run, so `npx-import` doesn't either.
 
-### What if the user has already installed the dependency somewhere?
+### 🧐 What if the user has already installed the dependency somewhere?
 
 Then `npxImport` short-circuits, returning the local version without logging anything out. This is what the user is instructed to do to "skip this step in future". In other words, `npxImport()` first tries to call your native `import()`, and only does anything if that fails.
 
 Note that this also works for multiple dependencies, `npxImport(['pkg-a', 'pkg-b', 'pkg-c'])` will only fetch & install those that are missing.
 
-### What about multiple projects? Won't you get conflicting versions?
+### 😵‍💫 What about multiple projects? Won't you get conflicting versions?
 
 As it turns out, no! While I wasn't paying attention, `npx` got really smart! To understand why, we need to look at how `npx` works:
 
@@ -238,19 +238,19 @@ drwxr-xr-x    - glen  4 Aug 11:37 │  └──  kind-of
 
 So `npx` is doing exactly the same as an `npm install`, with a `package.json`, `package-lock.json`, `node_modules` etc. It's just dynamically creating directories based on some hash of its inputs. It's super clever!
 
-### But what about transitive deps? Won't you get duplication?
+### 😐 But what about transitive deps? Won't you get duplication?
 
 Sadly, yes. If both your package `main-pkg` and `util-a` depend on `util-b`, then calling `npxImport('util-a')` from within `main-pkg` will create a new directory with a second copy of `util-b`. If there are globals in that package, or if the version specifiers are slightly different, you could potentially have problems.
 
 It's probably possible to [detect this in future](https://github.com/geelen/npx-import/issues/2) and warn/error out. But for now, I recommend using `npxImport` for mostly self-contained dependencies.
 
-### What about version mismatch with local files?
+### 🫤 What about version mismatch with local files?
 
 If a user has `pkg-a` version `1.0.0` installed, but one of their packages calls `npxImport('pkg-a@^2.0.0')`, `npxImport` isn't smart enough ([yet](https://github.com/geelen/npx-import/issues/3)) to know that the local version of `pkg-a` doesn't match the version range specified (since it's using native `import()` under the hood). Without `npxImport`, the `npm install` step would have had a chance to bump the installed version of `pkg-a` to meet the requirements of _all_ packages being used, but we're bypassing that.
 
 This will be fixed in a future version.
 
-### What kind of packages would you use this for?
+### 🫠 What kind of packages would you use this for?
 
 * Anything with native extensions needing building (do that when you need it)
 * Packages with large downloads (e.g. puppeteer, sqlite-node)
