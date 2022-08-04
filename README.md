@@ -2,7 +2,9 @@
 
 ### Runtime dependencies, installed _as if by magic_ ✨
 
-<br/>
+[![](https://img.shields.io/badge/author-@glenmaddern-blue.svg?style=flat)](https://twitter.com/glenmaddern)
+![npm](https://img.shields.io/npm/v/npx-import)
+![GitHub last commit](https://img.shields.io/github/last-commit/geelen/npx-import)
 
 `npx-import` can be used as a drop-in replacement for [dynamic `import()`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/import):
 
@@ -141,7 +143,7 @@ This gives the user a chance to see their mistake and prevent being hacked to bi
 
 Ah yes, that seems to go against the previous point. But `npx-import` isn't being triggered from a potentially clumsy human on a keyboard, it's running inside some source code you've (by definition) already authorised to run on your machine.
 
-`npx-import` is an alternative to publishing these as normal dependencies of your project and having your users download them at install time. Users aren't prompted to approve every transitive dependency of the things they install/run, so `npx-import` doesn't either.
+`npx-import` is an alternative to publishing these as normal dependencies of your project and having your users download them at install time. `npm install` doesn't prompt the user to approve every transitive dependency of what's being installed/run, so `npx-import` doesn't either.
 
 ### 🧐 What if the user has already installed the dependency somewhere?
 
@@ -153,7 +155,7 @@ Note that this also works for multiple dependencies, `npxImport(['pkg-a', 'pkg-b
 
 As it turns out, no! While I wasn't paying attention, `npx` got really smart! To understand why, we need to look at how `npx` works:
 
-For starters, `npx some-pkg` is a shorthand for `npx -p some-pkg <command>`, where `<command>` is whatever `bin` that `some-pkg` declares. Often, the `<command>` and the package name are the same (e.g. `npx prettier`), but it's the `bin` field inside the package that's really being used. Otherwise, scoped packages like `npx @some-org/cli-tool` would never work. If there's no `bin` field declared (e.g. for `chokidar`, you need `npx chokidar-cli`), or if there's more than one (e.g. for `typescript`, you need `npx -p typescript tsc`), you have to use the expanded form.
+For starters, `npx some-pkg` is a shorthand for `npx -p some-pkg <command>`, where `<command>` is whatever `bin` that `some-pkg` declares. Often, the `<command>` and the package name are the same (e.g. `npx prettier`), but it's the `bin` field inside the package that's really being used. Otherwise, scoped packages (like `npx @11ty/eleventy`) would never work. If there's no `bin` field declared (e.g. for `chokidar`, you need `npx chokidar-cli`), or if there's more than one (e.g. for `typescript`, you need `npx -p typescript tsc`), you have to use the expanded form.
 
 But there's no requirement that `<command>` is a `bin` inside the package at all! It can be any command (at least for `npx`, `pnpm dlx` and `yarn dlx` have different restrictions), for example, we can inject a `node -e` command and start to learn about what's going on:
 
