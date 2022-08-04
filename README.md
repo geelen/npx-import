@@ -2,7 +2,7 @@
 
 ### Runtime dependencies, installed _as if by magic_ ✨
 
-[![twitter](https://img.shields.io/badge/author-@glenmaddern-blue.svg?style=flat)](https://twitter.com/glenmaddern) [![npm](https://img.shields.io/npm/v/npx-import)](https://www.npmjs.com/package/npx-import) [![GitHub last commit](https://img.shields.io/github/last-commit/geelen/npx-import)](https://github.com/geelen/npx-import)
+[![twitter](https://img.shields.io/badge/@glenmaddern-blue.svg?style=flat&logo=twitter&label=​)](https://twitter.com/glenmaddern)&nbsp; [![GitHub last commit](https://img.shields.io/github/last-commit/geelen/npx-import?logo=github&style=flat&label=​)](https://github.com/geelen/npx-import)&nbsp; [![npm](https://img.shields.io/npm/v/npx-import?label=​&logo=npm)](https://www.npmjs.com/package/npx-import) 
 
 `npx-import` can be used as a drop-in replacement for [dynamic `import()`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/import):
 
