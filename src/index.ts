@@ -11,6 +11,7 @@ type Package = {
   name: string
   packageWithPath: string
   version: string
+  exact: boolean
   path: string
   imported: typeof NOT_IMPORTABLE | any
   local: boolean
@@ -81,7 +82,7 @@ async function checkPackagesAvailableLocally(pkg: string | string[]) {
   const packages: Record<string, Package> = {}
 
   for (const p of Array.isArray(pkg) ? pkg : [pkg]) {
-    const { name, version, path } = parseAndValidate(p)
+    const { name, version, path, exact } = parseAndValidate(p)
     if (packages[name])
       throw new Error(
         `npx-import cannot import the same package twice! Got: '${p}' but already saw '${name}' earlier!`
@@ -92,6 +93,7 @@ async function checkPackagesAvailableLocally(pkg: string | string[]) {
       name,
       packageWithPath,
       version,
+      exact,
       path,
       imported,
       local: imported !== NOT_IMPORTABLE,
@@ -116,7 +118,7 @@ function parseAndValidate(p: string) {
         `npx-import can't import invalid package name: parsed name '${name}' from '${p}'`
       )
   }
-  return { name, version, path }
+  return { name, version, path, exact: semver.parse(version) !== null }
 }
 
 async function tryImport(packageWithPath: string) {
@@ -140,7 +142,10 @@ async function checkNpxVersion() {
 }
 
 async function installAndReturnDir(packages: Package[], logger: Logger) {
-  const installPackage = `npx -y ${packages.map((p) => `-p ${formatForCLI(p)}`).join(' ')}`
+  const offline = packages.every((p) => p.exact)
+  const installPackage = `npx --prefer-${offline ? 'offline' : 'online'} -y ${packages
+    .map((p) => `-p ${formatForCLI(p)}`)
+    .join(' ')}`
   logger(`Installing... (${installPackage})`)
   const emitPath = `node -e 'console.log(process.env.PATH)'`
   const fullCmd = `${installPackage} ${emitPath}`

@@ -106,7 +106,9 @@ const bigDep = await npxImport<BigDepType>('big-dep')
 const lazyDep = await npxImport('left-pad@1.3.0')
 ```
 
-Any package specifier that's valid in `package.json` will work here: e.g. `^1.0.0`, `~2.3.0`, `>4.0.0`
+Any package specifier that's valid in `package.json` will work here: e.g. `^1.0.0`, `~2.3.0`, `>4.0.0`, `@latest`, `@next`, etc.
+
+Note: there is a speed benefit from using exact versions. `npxImport(pkg-a@1.2.3)` will run `npx --prefer-offline` under the hood, making it faster after the first run (since it doesn't first check the NPM registry for newer versions).
 
 * You can also install multiple packages at once:
 
@@ -165,7 +167,16 @@ Then `npxImport` short-circuits, returning the local version without logging any
 
 Note that this also works for multiple dependencies, `npxImport(['pkg-a', 'pkg-b', 'pkg-c'])` will only fetch & install those that are missing.
 
-### 😵‍💫 What about multiple projects? Won't you get conflicting versions?
+### 🤪 Doesn't this mean dependencies gets repeatedly downloaded & installed?
+
+No! `npx` maintains a cache in the user's home directory. If a cached package is found, `npx` will (by default) hit NPM to check if there's any new versions for that specifier, and if not, return the cache. `npxImport` adds a small optimisation—if you specify an exact package version (e.g. `@7.8.2`), it'll run `npx --prefer-offline` to skip the NPM check.
+
+So new packages are only downloaded & installed when:
+
+* It's the first time a particular package/version combo is seen (see next section)
+* No locked version was provided and there's a new version on NPM
+
+### 😵‍💫 What about multiple projects? Doesn't the cache mean projects can clobber/overwrite/conflict with each other?
 
 As it turns out, no! While I wasn't paying attention, `npx` got really smart! To understand why, we need to look at how `npx` works:
 
@@ -252,7 +263,7 @@ drwxr-xr-x    - glen  4 Aug 11:37 │  └──  kind-of
 }
 ```
 
-So `npx` is doing exactly the same as an `npm install`, with a `package.json`, `package-lock.json`, `node_modules` etc. It's just dynamically creating directories based on some hash of its inputs. It's super clever!
+So `npx` is doing exactly the same as an `npm install`, with a `package.json`, `package-lock.json`, `node_modules` etc. It's just dynamically creating directories based on some hash of its inputs. So the only way two projects can use the same package in the cache is if they _both_ ask for _exactly_ the same packages & versions. It's super clever!
 
 ### 😐 But what about transitive deps? Won't you get duplication?
 
