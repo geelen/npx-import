@@ -33,12 +33,12 @@ export async function writeToFile(report: Report, filename: string) {
 
   if (filename.endsWith('.png')) {
     console.log(`This is a PNG! We'll have to compile imagemagick!`)
-    const magick = await npxImport('imagemagick-utils@^1.1.0')
+    const { default: magick } = await npxImport('imagemagick-utils@^1.1.0')
     await magick.renderToPNG(report, filename)
 
   } else if (filename.endsWith('.pdf')) {
     console.log(`Argh, a PDF!? Go make a cuppa, this'll take a while...`)
-    const pdfBoi = await npxImport('chonk-pdf-boi@3.1.4')
+    const { default: pdfBoi } = await npxImport('chonk-pdf-boi@3.1.4')
     await pdfBoi.generate(report, filename)
 
   } else {
