@@ -45,9 +45,6 @@ export async function npxImport<T = unknown>(
         packages[pkg.name].imported = await _importRelative(installDir, pkg.packageWithPath)
         INSTALL_CACHE[pkg.name] = installDir
       }
-      for (const pkg of localPackages) {
-        INSTALL_CACHE[pkg.name] = INSTALLED_LOCALLY
-      }
     } catch (e) {
       throw new Error(
         `npx-import failed for ${missingPackages
@@ -58,6 +55,9 @@ export async function npxImport<T = unknown>(
           `\n\n`
       )
     }
+  }
+  for (const pkg of localPackages) {
+    INSTALL_CACHE[pkg.name] = INSTALLED_LOCALLY
   }
 
   const results = allPackages.map((p) => p.imported)
