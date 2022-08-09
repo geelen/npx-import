@@ -6,7 +6,7 @@ export async function _import(packageWithPath: string) {
 }
 
 export async function _importRelative(installDir: string, packageWithPath: string) {
-  return await createRequire(installDir)(packageWithPath)
+  return await import(_resolveRelative(installDir, packageWithPath))
 }
 
 export function _resolve(packageWithPath: string) {
