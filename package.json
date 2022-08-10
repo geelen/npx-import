@@ -20,6 +20,7 @@
     "@types/semver": "^7.3.10",
     "@types/validate-npm-package-name": "^4.0.0",
     "chalk": "^5.0.1",
+    "github-readme-to-html": "github:jrnewton/github-readme-to-html#9-syntax-highlighting-take2",
     "prettier": "^2.7.1",
     "typescript": "^4.7.4",
     "vitest": "^0.20.3"

@@ -51,7 +51,7 @@ export async function writeToFile(report: Report, filename: string) {
 
 When run, `npx-import` will log out some explanation, as well as instructions for installing the dependency locally & skipping this step in future:
 
-```
+```text
 ❯ node ./index.js --filename=image.png
 
 This is a PNG! We'll have to compile imagemagick!
