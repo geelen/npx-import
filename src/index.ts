@@ -136,8 +136,8 @@ async function checkNpxVersion() {
     throw new Error(`Couldn't execute ${versionCmd}. Is npm installed and up-to-date?`)
   }
 
-  if (!semver.gte(npmVersion, '8.0.0')) {
-    throw new Error(`Require npm version 8+. Got '${npmVersion}' when running '${versionCmd}'`)
+  if (!semver.gte(npmVersion, '7.0.0')) {
+    throw new Error(`Require npm version 7+. Got '${npmVersion}' when running '${versionCmd}'`)
   }
 }
 

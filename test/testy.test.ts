@@ -151,11 +151,11 @@ describe(`npxImport`, () => {
     })
 
     test(`Should fail if NPX is old`, async () => {
-      expectExecaCommand('npx --version').returning({ stdout: '7.1.2' })
+      expectExecaCommand('npx --version').returning({ stdout: '6.1.2' })
 
       await npxImportFailed(
         'npm-too-old',
-        `Require npm version 8+. Got '7.1.2' when running 'npx --version'`
+        `Require npm version 7+. Got '6.1.2' when running 'npx --version'`
       )
     })
 
