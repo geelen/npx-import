@@ -218,7 +218,7 @@ const formatForCLI = (p) => {
 function getTempPath(stdout: string) {
   if (WINDOWS) {
     const paths = stdout.replace(/^PATH=/i, '').split(';')
-    const tempPath = paths.find((p) => /\\npm-cache\\_npx\\/.exec(p))
+    const tempPath = paths.find((p) => /\\npm[-\\]+cache\\_npx\\/.exec(p))
 
     if (!tempPath)
       throw new Error(
