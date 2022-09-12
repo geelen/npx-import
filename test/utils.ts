@@ -6,6 +6,7 @@ import { execaCommand as _execaCommand } from 'execa'
 import * as utils from '../lib/utils'
 import os from 'os'
 const WINDOWS = os.platform() === 'win32'
+export const printPathCmd = WINDOWS ? 'set PATH' : 'printenv PATH'
 
 const { _import, _importRelative, _resolve, _resolveRelative } = utils as unknown as {
   _import: MockedFunction<typeof utils._import>

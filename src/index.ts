@@ -1,10 +1,11 @@
+import os from 'node:os'
+import path from 'node:path'
 import semver from 'semver'
-import path from 'path'
 import { parse } from 'parse-package-name'
-import { _import, _importRelative, _resolve, _resolveRelative } from './utils.js'
-import {execaCommand, execaCommandSync} from 'execa'
+import { execaCommand } from 'execa'
 import validateNpmName from 'validate-npm-package-name'
-import os from 'os'
+import { _import, _importRelative, _resolve, _resolveRelative } from './utils.js'
+
 const WINDOWS = os.platform() === 'win32'
 
 type Logger = (message: string) => void
@@ -149,7 +150,7 @@ async function installAndReturnDir(packages: Package[], logger: Logger) {
     .map((p) => `-p ${formatForCLI(p)}`)
     .join(' ')}`
   logger(`Installing... (${installPackage})`)
-  const emitPath = `node -e 'console.log(process.env.PATH)'`
+  const emitPath = WINDOWS ? `set PATH` : `printenv PATH`
   const fullCmd = `${installPackage} ${emitPath}`
   const { failed, stdout } = await execaCommand(fullCmd, {
     shell: true,
@@ -216,7 +217,7 @@ const formatForCLI = (p) => {
 // Find where NPX just installed the package
 function getTempPath(stdout: string) {
   if (WINDOWS) {
-    const paths = stdout.split(';')
+    const paths = stdout.replace(/^PATH=/i, '').split(';')
     const tempPath = paths.find((p) => /\\npm-cache\\_npx\\/.exec(p))
 
     if (!tempPath)
