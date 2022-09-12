@@ -1,9 +1,12 @@
+import os from 'node:os'
+import path from 'node:path'
 import semver from 'semver'
-import path from 'path'
 import { parse } from 'parse-package-name'
-import { _import, _importRelative, _resolve, _resolveRelative } from './utils.js'
 import { execaCommand } from 'execa'
 import validateNpmName from 'validate-npm-package-name'
+import { _import, _importRelative, _resolve, _resolveRelative } from './utils.js'
+
+const WINDOWS = os.platform() === 'win32'
 
 type Logger = (message: string) => void
 
@@ -147,7 +150,7 @@ async function installAndReturnDir(packages: Package[], logger: Logger) {
     .map((p) => `-p ${formatForCLI(p)}`)
     .join(' ')}`
   logger(`Installing... (${installPackage})`)
-  const emitPath = `node -e 'console.log(process.env.PATH)'`
+  const emitPath = WINDOWS ? `set PATH` : `printenv PATH`
   const fullCmd = `${installPackage} ${emitPath}`
   const { failed, stdout } = await execaCommand(fullCmd, {
     shell: true,
@@ -157,15 +160,7 @@ async function installAndReturnDir(packages: Package[], logger: Logger) {
       `Failed installing ${packages.map((p) => p.name).join(',')} using: ${installPackage}.`
     )
   }
-  const paths = stdout.split(':')
-  const tempPath = paths.find((p) => /\/\.npm\/_npx\//.exec(p))
-
-  if (!tempPath)
-    throw new Error(
-      `Failed to find temporary install directory. Looking for paths matching '/.npm/_npx/' in:\n${JSON.stringify(
-        paths
-      )}`
-    )
+  const tempPath = getTempPath(stdout)
 
   // Expecting the path ends with node_modules/.bin
   const nodeModulesPath = path.resolve(tempPath, '..')
@@ -217,4 +212,31 @@ export function getPackageManager(): keyof typeof INSTRUCTIONS {
 const formatForCLI = (p) => {
   const unescaped = `${p.name}@${p.version}`
   return unescaped.match(/[<>*]/) ? `'${unescaped}'` : unescaped
+}
+
+// Find where NPX just installed the package
+function getTempPath(stdout: string) {
+  if (WINDOWS) {
+    const paths = stdout.replace(/^PATH=/i, '').split(';')
+    const tempPath = paths.find((p) => /\\npm-cache\\_npx\\/.exec(p))
+
+    if (!tempPath)
+      throw new Error(
+        `Failed to find temporary install directory. Looking for paths matching '\\npm-cache\\_npx\\' in:\n${JSON.stringify(
+          paths
+        )}`
+      )
+    return tempPath
+  } else {
+    const paths = stdout.split(':')
+    const tempPath = paths.find((p) => /\/\.npm\/_npx\//.exec(p))
+
+    if (!tempPath)
+      throw new Error(
+        `Failed to find temporary install directory. Looking for paths matching '/.npm/_npx/' in:\n${JSON.stringify(
+          paths
+        )}`
+      )
+    return tempPath
+  }
 }

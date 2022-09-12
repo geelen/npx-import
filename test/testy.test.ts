@@ -13,6 +13,8 @@ import {
   npxImportSucceeded,
   expectRelativeImport,
   pkgParseFailed,
+  getBasePath,
+  printPathCmd,
 } from './utils'
 import { npxImport, npxResolve } from '../lib'
 
@@ -161,10 +163,9 @@ describe(`npxImport`, () => {
 
     test(`Should attempt to install, passing through whatever happens`, async () => {
       expectExecaCommand('npx --version').returning({ stdout: '8.1.2' })
-      expectExecaCommand(
-        `npx --prefer-online -y -p broken-install@^2.0.0 node -e 'console.log(process.env.PATH)'`,
-        { shell: true }
-      ).returning(new Error('EXPLODED TRYING TO INSTALL'))
+      expectExecaCommand(`npx --prefer-online -y -p broken-install@^2.0.0 ${printPathCmd}`, {
+        shell: true,
+      }).returning(new Error('EXPLODED TRYING TO INSTALL'))
 
       await npxImportFailed(
         'broken-install@^2.0.0',
@@ -178,10 +179,9 @@ describe(`npxImport`, () => {
 
     test(`Should include tag in error instructions`, async () => {
       expectExecaCommand('npx --version').returning({ stdout: '8.1.2' })
-      expectExecaCommand(
-        `npx --prefer-online -y -p left-pad@this-tag-no-exist node -e 'console.log(process.env.PATH)'`,
-        { shell: true }
-      ).returning(new Error('No matching version found for left-pad@this-tag-no-exist.'))
+      expectExecaCommand(`npx --prefer-online -y -p left-pad@this-tag-no-exist ${printPathCmd}`, {
+        shell: true,
+      }).returning(new Error('No matching version found for left-pad@this-tag-no-exist.'))
 
       await npxImportFailed(
         'left-pad@this-tag-no-exist',
@@ -195,10 +195,10 @@ describe(`npxImport`, () => {
 
     test(`Should not include path in error instructions`, async () => {
       const npxDirectoryHash = randomString(12)
-      const basePath = `/Users/glen/.npm/_npx/${npxDirectoryHash}/node_modules`
+      const basePath = getBasePath(npxDirectoryHash)
 
       expectExecaCommand('npx --version').returning({ stdout: '8.1.2' })
-      expectExecaCommand(`npx --prefer-online -y -p @org/pkg@my-tag node -e 'console.log(process.env.PATH)'`, {
+      expectExecaCommand(`npx --prefer-online -y -p @org/pkg@my-tag ${printPathCmd}`, {
         shell: true,
       }).returning({ stdout: getNpxPath(npxDirectoryHash) })
       expectRelativeImport(basePath, '@org/pkg/weird-path.js').returning(
@@ -219,10 +219,10 @@ describe(`npxImport`, () => {
   describe('success cases', () => {
     test(`Should call relative import and return`, async () => {
       const npxDirectoryHash = randomString(12)
-      const basePath = `/Users/glen/.npm/_npx/${npxDirectoryHash}/node_modules`
+      const basePath = getBasePath(npxDirectoryHash)
 
       expectExecaCommand('npx --version').returning({ stdout: '8.1.2' })
-      expectExecaCommand(`npx --prefer-online -y -p @org/pkg@my-tag node -e 'console.log(process.env.PATH)'`, {
+      expectExecaCommand(`npx --prefer-online -y -p @org/pkg@my-tag ${printPathCmd}`, {
         shell: true,
       }).returning({ stdout: getNpxPath(npxDirectoryHash) })
       expectRelativeImport(basePath, '@org/pkg/lib/index.js').returning({ foo: 1, bar: 2 })
@@ -241,10 +241,10 @@ describe(`npxImport`, () => {
 
     test(`Should prefer offline for exact versions`, async () => {
       const npxDirectoryHash = randomString(12)
-      const basePath = `/Users/glen/.npm/_npx/${npxDirectoryHash}/node_modules`
+      const basePath = getBasePath(npxDirectoryHash)
 
       expectExecaCommand('npx --version').returning({ stdout: '8.1.2' })
-      expectExecaCommand(`npx --prefer-offline -y -p @org/pkg@3.0.1 node -e 'console.log(process.env.PATH)'`, {
+      expectExecaCommand(`npx --prefer-offline -y -p @org/pkg@3.0.1 ${printPathCmd}`, {
         shell: true,
       }).returning({ stdout: getNpxPath(npxDirectoryHash) })
       expectRelativeImport(basePath, '@org/pkg/lib/index.js').returning({ foo: 1, bar: 2 })
@@ -263,15 +263,12 @@ describe(`npxImport`, () => {
 
     test(`Should install two packages`, async () => {
       const npxDirectoryHash = randomString(12)
-      const basePath = `/Users/glen/.npm/_npx/${npxDirectoryHash}/node_modules`
+      const basePath = getBasePath(npxDirectoryHash)
 
       expectExecaCommand('npx --version').returning({ stdout: '8.1.2' })
-      expectExecaCommand(
-        `npx --prefer-online -y -p pkg-a@latest -p pkg-b@latest node -e 'console.log(process.env.PATH)'`,
-        {
-          shell: true,
-        }
-      ).returning({ stdout: getNpxPath(npxDirectoryHash) })
+      expectExecaCommand(`npx --prefer-online -y -p pkg-a@latest -p pkg-b@latest ${printPathCmd}`, {
+        shell: true,
+      }).returning({ stdout: getNpxPath(npxDirectoryHash) })
       expectRelativeImport(basePath, 'pkg-a').returning({ name: 'pkg-a', foo: 1 })
       expectRelativeImport(basePath, 'pkg-b').returning({ name: 'pkg-b', bar: 2 })
 
@@ -295,10 +292,10 @@ describe(`npxImport`, () => {
       _import.mockRejectedValueOnce('not-found') // pkg-b
 
       const npxDirectoryHash = randomString(12)
-      const basePath = `/Users/glen/.npm/_npx/${npxDirectoryHash}/node_modules`
+      const basePath = getBasePath(npxDirectoryHash)
 
       expectExecaCommand('npx --version').returning({ stdout: '8.1.2' })
-      expectExecaCommand(`npx --prefer-offline -y -p pkg-b@1.2.3 node -e 'console.log(process.env.PATH)'`, {
+      expectExecaCommand(`npx --prefer-offline -y -p pkg-b@1.2.3 ${printPathCmd}`, {
         shell: true,
       }).returning({ stdout: getNpxPath(npxDirectoryHash) })
       expectRelativeImport(basePath, 'pkg-b').returning({ name: 'pkg-b', bar: 2, local: false })
@@ -323,15 +320,12 @@ describe(`npxImport`, () => {
 
     test(`Should escape versions to be path-safe`, async () => {
       const npxDirectoryHash = randomString(12)
-      const basePath = `/Users/glen/.npm/_npx/${npxDirectoryHash}/node_modules`
+      const basePath = getBasePath(npxDirectoryHash)
 
       expectExecaCommand('npx --version').returning({ stdout: '8.1.2' })
-      expectExecaCommand(
-        `npx --prefer-online -y -p 'pkg-a@>1.0.0' -p 'pkg-b@*' node -e 'console.log(process.env.PATH)'`,
-        {
-          shell: true,
-        }
-      ).returning({ stdout: getNpxPath(npxDirectoryHash) })
+      expectExecaCommand(`npx --prefer-online -y -p 'pkg-a@>1.0.0' -p 'pkg-b@*' ${printPathCmd}`, {
+        shell: true,
+      }).returning({ stdout: getNpxPath(npxDirectoryHash) })
       expectRelativeImport(basePath, 'pkg-a').returning({ name: 'pkg-a', foo: 1 })
       expectRelativeImport(basePath, 'pkg-b').returning({ name: 'pkg-b', bar: 2 })
 
@@ -360,13 +354,13 @@ describe(`npxResolve`, () => {
 
   test(`Should return one local one new directory`, async () => {
     const npxDirectoryHash = randomString(12)
-    const basePath = `/Users/glen/.npm/_npx/${npxDirectoryHash}/node_modules`
+    const basePath = getBasePath(npxDirectoryHash)
 
     _import.mockResolvedValueOnce({}) // pkg-a
     _import.mockRejectedValueOnce('not-found') // pkg-b
 
     expectExecaCommand('npx --version').returning({ stdout: '8.1.2' })
-    expectExecaCommand(`npx --prefer-online -y -p pkg-b@latest node -e 'console.log(process.env.PATH)'`, {
+    expectExecaCommand(`npx --prefer-online -y -p pkg-b@latest ${printPathCmd}`, {
       shell: true,
     }).returning({ stdout: getNpxPath(npxDirectoryHash) })
     expectRelativeImport(basePath, 'pkg-b').returning({ name: 'pkg-b', bar: 2, local: false })
