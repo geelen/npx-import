@@ -217,7 +217,11 @@ const formatForCLI = (p) => {
 // Find where NPX just installed the package
 function getTempPath(stdout: string) {
   if (WINDOWS) {
-    const paths = stdout.replace(/^PATH=/i, '').split(';')
+    const paths = stdout
+      .replace(/^PATH=/i, '')
+      .replace(/\\\\\\\\/g, '\\\\')
+      .replace(/\\r\\n/g, ';')
+      .split(';')
     const tempPath = paths.find((p) => /\\npm[-\\]+cache\\_npx\\/.exec(p))
 
     if (!tempPath)
