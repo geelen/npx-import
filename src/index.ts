@@ -24,9 +24,13 @@ const NOT_IMPORTABLE = Symbol()
 const INSTALLED_LOCALLY = Symbol()
 const INSTALL_CACHE: Record<string, string | typeof INSTALLED_LOCALLY> = {}
 
+const DEFAULT_LOGGER = process.env.NPX_IMPORT_QUIET
+  ? () => {}
+  : (message: string) => console.log(`[NPXI] ${message}`)
+
 export async function npxImport<T = unknown>(
   pkg: string | string[],
-  logger: Logger = (message: string) => console.log(`[NPXI] ${message}`)
+  logger: Logger = DEFAULT_LOGGER
 ): Promise<T> {
   const packages = await checkPackagesAvailableLocally(pkg)
   const allPackages = Object.values(packages)
