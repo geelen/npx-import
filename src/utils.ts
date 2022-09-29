@@ -11,6 +11,7 @@ export async function _importRelative(installDir: string, packageWithPath: strin
 }
 
 export function _resolve(packageWithPath: string) {
+  const require = createRequire(import.meta.url)
   return require.resolve(packageWithPath)
 }
 
