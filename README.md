@@ -1,4 +1,8 @@
+<div class="oranda-hide">
+
 # 🧙‍♂️ `npx-import` 🧙‍♀️
+
+</div>
 
 ### Runtime dependencies, installed _as if by magic_ ✨
 
@@ -6,7 +10,7 @@
 
 `npx-import` can be used as a drop-in replacement for [dynamic `import()`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/import):
 
-```ts
+```js
 import { npxImport } from 'npx-import'
 
 // If big-dep isn't installed locally, npxImport will try
@@ -22,7 +26,7 @@ Is this a good idea? See [FAQ](#faq) below.
 
 `npx-import` is ideal for deferring installation for dependencies that are unexpectedly large, require native compilation, or not used very often (or some combination thereof), for example:
 
-```ts
+```js
 // Statically import small/common deps as normal
 import textRenderer from 'tiny-text-renderer'
 
@@ -51,7 +55,7 @@ export async function writeToFile(report: Report, filename: string) {
 
 When run, `npx-import` will log out some explanation, as well as instructions for installing the dependency locally & skipping this step in future:
 
-```
+```sh
 ❯ node ./index.js --filename=image.png
 
 This is a PNG! We'll have to compile imagemagick!
@@ -77,7 +81,7 @@ Most importantly, though, **it's compatible with `npx`!** For example, `npx some
 
 ## Installation
 
-```
+```sh
 npm install --save npx-import
 pnpm add -P npx-import
 yarn add npx-import
@@ -87,11 +91,11 @@ yarn add npx-import
 
 Just like `import()`, the return type default to `any`. But you can import the types of a devDependency without any consumers of your package needing to download it at installation time.
 
-```
+```sh
 pnpm add -D big-dep
 ```
 
-```ts
+```js
 import { npxImport } from 'npx-import'
 type BigDepType = typeof import('big-dep')
 
@@ -102,7 +106,7 @@ const bigDep = await npxImport<BigDepType>('big-dep')
 
 * Since package versions are no longer tracked in your `package.json`, we recommend being explicit:
 
-```ts
+```js
 const lazyDep = await npxImport('left-pad@1.3.0')
 ```
 
@@ -112,20 +116,20 @@ Note: there is a speed benefit from using exact versions. `npxImport(pkg-a@1.2.3
 
 * You can also install multiple packages at once:
 
-```ts
+```js
 const [depA, depB] = await npxImport(['dep-a@7.8.2', 'dep-b@7.8.2'])
 ```
 
 `npx-import` also takes a third argument, which lets you customise, or silence, the log output. Each line that would normally be printed is passed to the logger function:
 
-```ts
+```js
 const grayLog = (line: string) => console.log(chalk.gray(line))
 const [depA, depB] = await npxImport(['dep-a@7.8.2', 'dep-b@7.8.2'], grayLog)
 ```
 
 * Use `npxResolve` instead of `require.resolve` to get the path (local or temporary)
 
-```ts
+```js
 export function getSQLiteNativeBindingLocation() {
   return path.resolve(
     path.dirname(npxResolve("better-sqlite3")),
@@ -146,7 +150,7 @@ Nah it's good actually.
 
 Initially, `npx` didn't prompt before downloading and executing a package, which was _definitely_ a security risk. But that's been [fixed since version 7](https://github.com/npm/npx/issues/9#issuecomment-786940691). Now, if you're intending to write `npx prettier` to format your code and accidentally type `npx prettomghackmycomputerpls`, you'll get a helpful prompt:
 
-```
+```sh
 ❯ npx prettier@latest
 Need to install the following packages:
   prettomghackmycomputerpls@6.6.6
@@ -184,14 +188,14 @@ For starters, `npx some-pkg` is a shorthand for `npx -p some-pkg <command>`, whe
 
 But there's no requirement that `<command>` is a `bin` inside the package at all! It can be any command (at least for `npx`, `pnpm dlx` and `yarn dlx` have different restrictions), for example, we can inject a `node -e` command and start to learn about what's going on:
 
-```
+```sh
 ❯ npx -y -p is-odd node -e 'console.log(process.env.PATH.split(":"))' | grep .npm/_npx
   '/Users/glen/.npm/_npx/e1b5bd0eb9f99fbc/node_modules/.bin',
 ```
 
 Using `process.env.PATH` and searching for `.npm/_npx` is, on OSX with NPX v8+, a reliable way to find out where `npx` is installing these temporary packages. Let's look inside:
 
-```
+```sh
 ❯ ll2 /Users/glen/.npm/_npx/e1b5bd0eb9f99fbc/
 drwxr-xr-x    - glen  4 Aug 11:07  /Users/glen/.npm/_npx/e1b5bd0eb9f99fbc
 drwxr-xr-x    - glen  4 Aug 11:07 ├──  node_modules
@@ -215,7 +219,7 @@ That looks like a pretty normal project directory to me!
 
 Now, the crucial bit: **every time `npx` runs for some unique set of packages it creates a new directory**. That goes for installing multiple deps at once but also for different named/pinned versions/tags for individual packages:
 
-```
+```sh
 ❯ export LOG_NPX_DIR="node -e 'console.log(process.env.PATH.split(\":\").filter(p => p.match(/\.npm\/_npx/)))'"
 
 ❯ npx -y -p is-odd $LOG_NPX_DIR
@@ -235,7 +239,7 @@ Note that **every one of these commands downloaded the same version of `is-odd`*
 
 For multiple packages, the same rule applies, although order is not important:
 
-```
+```sh
 ❯ npx -y -p is-odd -p is-even $LOG_NPX_DIR
 [ '/Users/glen/.npm/_npx/f9af4fded130fd33/node_modules/.bin' ]
 
